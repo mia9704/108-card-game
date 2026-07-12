@@ -15,6 +15,7 @@ import { TablePlayStack } from '../components/TablePlayStack';
 import { RoundScoresOverlay } from '../components/RoundScoresOverlay';
 import { isSameRankStack } from '../game/rules';
 import {
+  acceptHumanAceSkip,
   clearLastPlay,
   completeSuitChoice,
   declareOneLeft,
@@ -26,6 +27,7 @@ import {
   humanCanDraw,
   humanCanPassAfterDraw,
   humanCanPlayCards,
+  humanInAceSkipChallenge,
   passHumanTurn,
   playHumanCards,
   resetMatch,
@@ -53,6 +55,7 @@ export function GameScreen() {
   const canDraw = humanCanDraw(game);
   const canPassAfterDraw = humanCanPassAfterDraw(game);
   const canDeclare = humanCanDeclare(game);
+  const inAceSkipChallenge = humanInAceSkipChallenge(game);
   const scoreboard = getScoreboard(game);
   const suitPrompt = game.pendingPrompt?.type === 'suitChoice' ? game.pendingPrompt : null;
   const lastPlay = game.lastPlay;
@@ -190,6 +193,11 @@ export function GameScreen() {
     setSelectedIds([]);
   }
 
+  function handleAcceptSkip() {
+    setGame((current) => acceptHumanAceSkip(current));
+    setSelectedIds([]);
+  }
+
   function handleDeclare() {
     setGame((current) => declareOneLeft(current));
   }
@@ -267,8 +275,10 @@ export function GameScreen() {
                 7-chain: {game.sevenChainTotal} · penalty {7 * game.sevenChainTotal}
               </Text>
             ) : null}
-            {game.aceChainTotal > 0 ? (
-              <Text style={styles.chainText}>Ace chain: {game.aceChainTotal} skips</Text>
+            {game.aceSkipsRemaining > 0 ? (
+              <Text style={styles.chainText}>
+                Ace skip: {game.aceSkipsRemaining} player{game.aceSkipsRemaining === 1 ? '' : 's'} left
+              </Text>
             ) : null}
 
             <Text style={styles.message}>{game.message}</Text>
@@ -308,6 +318,11 @@ export function GameScreen() {
                 <Text style={styles.secondaryButtonText}>
                   Play{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
                 </Text>
+              </Pressable>
+            ) : null}
+            {inAceSkipChallenge ? (
+              <Pressable style={styles.secondaryButton} onPress={handleAcceptSkip}>
+                <Text style={styles.secondaryButtonText}>Accept Skip</Text>
               </Pressable>
             ) : null}
             {canDraw ? (

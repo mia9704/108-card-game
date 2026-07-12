@@ -5,6 +5,7 @@ import {
   getTopCard,
   hasPlayableCard,
   isOneCardLeft,
+  isSameRankStack,
   needsDeclaration,
   requiresSuitChoice,
   sortHand,
@@ -146,7 +147,7 @@ function finishRound(
       matchWinnerId,
       lastRoundScores: roundScores,
       sevenChainTotal: 0,
-      aceChainTotal: 0,
+      aceSkipsRemaining: 0,
       postDrawPlay: false,
       pendingPrompt: null,
       message: `${message} ${matchWinner.name} wins the match!`,
@@ -160,7 +161,7 @@ function finishRound(
     roundWinnerId: winnerId,
     lastRoundScores: roundScores,
     sevenChainTotal: 0,
-    aceChainTotal: 0,
+    aceSkipsRemaining: 0,
     postDrawPlay: false,
     pendingPrompt: null,
     message,
@@ -178,17 +179,58 @@ export function shouldContinueAutomation(state: GameState): boolean {
   return !state.players[state.currentPlayerIndex].isHuman;
 }
 
-function resolveAceSkip(state: GameState): GameState {
-  if (state.aceChainTotal <= 0) {
+function getAceStacks(hand: Card[]): Card[][] {
+  const aces = hand.filter((card) => card.rank === 'A');
+  const stacks: Card[][] = [];
+  for (let size = 1; size <= aces.length; size += 1) {
+    stacks.push(aces.slice(0, size));
+  }
+  return stacks;
+}
+
+function isAceSkipChallenge(state: GameState): boolean {
+  return state.aceSkipsRemaining > 0;
+}
+
+function prepareHumanTurn(state: GameState): GameState {
+  const humanIndex = state.players.findIndex((player) => player.isHuman);
+  if (humanIndex === -1 || state.currentPlayerIndex !== humanIndex || state.phase !== 'playing') {
     return state;
   }
-  const skip = state.aceChainTotal;
-  const nextIndex = nextPlayerIndex(state, skip + 1);
-  return {
-    ...withCurrentPlayer(state, nextIndex),
-    aceChainTotal: 0,
-    message: `${skip} player${skip === 1 ? '' : 's'} skipped!`,
+
+  const human = state.players[humanIndex];
+  if (needsDeclaration(human.hand) && !human.declared) {
+    return applyDeclarePenalty(state, humanIndex, 'Forgot to declare before your turn.');
+  }
+
+  if (isAceSkipChallenge(state)) {
+    return { ...state, message: 'Play Ace(s) or accept the skip!' };
+  }
+
+  return { ...state, message: 'Your turn' };
+}
+
+function acceptAceSkip(state: GameState): GameState {
+  if (state.aceSkipsRemaining <= 0) {
+    return state;
+  }
+
+  const player = state.players[state.currentPlayerIndex];
+  const remaining = state.aceSkipsRemaining - 1;
+  let next: GameState = {
+    ...withCurrentPlayer(state, nextPlayerIndex(state, 1)),
+    aceSkipsRemaining: remaining,
+    message:
+      remaining > 0
+        ? `${player.name} was skipped. ${remaining} skip(s) remaining.`
+        : `${player.name} was skipped.`,
   };
+
+  return prepareHumanTurn(next);
+}
+
+function advanceTurn(state: GameState): GameState {
+  return withCurrentPlayer(state, nextPlayerIndex(state, 1));
 }
 
 function finalizePlay(
@@ -267,18 +309,16 @@ function finalizePlay(
   }
 
   if (rank === 'A') {
-    const aceTotal = next.aceChainTotal + count;
-    next = {
-      ...next,
-      aceChainTotal: aceTotal,
-      message: `${player.name} played ${count} ace(s). Ace chain: ${aceTotal}.`,
-    };
     const nextIndex = nextPlayerIndex(next, 1);
-    return withDeclareReminder(withCurrentPlayer(next, nextIndex), playerIndex);
-  }
-
-  if (next.aceChainTotal > 0) {
-    next = resolveAceSkip(next);
+    let result = withDeclareReminder(
+      {
+        ...withCurrentPlayer(next, nextIndex),
+        aceSkipsRemaining: count,
+        message: `${player.name} played ${count} ace(s). Skip next ${count} player(s).`,
+      },
+      playerIndex,
+    );
+    return prepareHumanTurn(result);
   }
 
   if (next.sevenChainTotal > 0) {
@@ -318,6 +358,10 @@ function playCards(
     if (rank !== '7' || !canPlayStack(cards, topCard)) {
       return { ...state, message: 'You must play 7s or draw the penalty.' };
     }
+  } else if (isAceSkipChallenge(state)) {
+    if (rank !== 'A' || !isSameRankStack(cards)) {
+      return { ...state, message: 'Play Ace(s) or accept the skip.' };
+    }
   } else if (!canPlayStack(cards, topCard)) {
     return { ...state, message: 'Those cards cannot be played.' };
   }
@@ -329,10 +373,10 @@ function endTurn(state: GameState): GameState {
   const endingPlayer = state.players[state.currentPlayerIndex];
   let next: GameState = { ...state, postDrawPlay: false };
 
-  if (next.aceChainTotal > 0) {
-    next = resolveAceSkip(next);
+  if (isAceSkipChallenge(next)) {
+    next = acceptAceSkip(next);
   } else {
-    next = withCurrentPlayer(next, nextPlayerIndex(next, 1));
+    next = advanceTurn(next);
   }
 
   if (
@@ -347,17 +391,7 @@ function endTurn(state: GameState): GameState {
 }
 
 function beginHumanTurn(state: GameState): GameState {
-  const humanIndex = state.players.findIndex((player) => player.isHuman);
-  if (state.currentPlayerIndex !== humanIndex) {
-    return state;
-  }
-
-  const human = state.players[humanIndex];
-  if (needsDeclaration(human.hand) && !human.declared) {
-    return applyDeclarePenalty(state, humanIndex, 'Forgot to declare before your turn.');
-  }
-
-  return { ...state, message: 'Your turn' };
+  return prepareHumanTurn(state);
 }
 
 function withDeclareReminder(state: GameState, playedByIndex: number): GameState {
@@ -397,11 +431,6 @@ function mustDraw(state: GameState, playerIndex: number): GameState {
       message: `${player.name} draws 1. You may play a card or pass.`,
     };
 
-    if (next.aceChainTotal > 0) {
-      next = resolveAceSkip(next);
-      return next;
-    }
-
     return {
       ...withCurrentPlayer(next, playerIndex),
       postDrawPlay: true,
@@ -439,7 +468,7 @@ function dealRound(state: GameState): GameState {
     phase: 'playing',
     roundWinnerId: null,
     sevenChainTotal: 0,
-    aceChainTotal: 0,
+    aceSkipsRemaining: 0,
     postDrawPlay: false,
     pendingPrompt: null,
     lastPlay: null,
@@ -462,7 +491,7 @@ export function createInitialMatch(): GameState {
     roundNumber: 1,
     lastRoundScores: null,
     sevenChainTotal: 0,
-    aceChainTotal: 0,
+    aceSkipsRemaining: 0,
     postDrawPlay: false,
     pendingPrompt: null,
     lastPlay: null,
@@ -514,7 +543,26 @@ export function getHumanPlayableStacks(state: GameState): Card[][] {
     return stacks;
   }
 
+  if (isAceSkipChallenge(state)) {
+    return getAceStacks(human.hand);
+  }
+
   return getPlayableStacks(human.hand, getTopCard(state.discardPile));
+}
+
+export function humanInAceSkipChallenge(state: GameState): boolean {
+  return humanCanAct(state) && isAceSkipChallenge(state);
+}
+
+export function acceptHumanAceSkip(state: GameState): GameState {
+  const humanIndex = state.players.findIndex((player) => player.isHuman);
+  if (humanIndex === -1 || state.currentPlayerIndex !== humanIndex) {
+    return state;
+  }
+  if (!isAceSkipChallenge(state)) {
+    return { ...state, message: 'No ace skip to accept.' };
+  }
+  return acceptAceSkip(state);
 }
 
 export function humanMustDraw(state: GameState): boolean {
@@ -533,6 +581,9 @@ export function humanCanDraw(state: GameState): boolean {
     return false;
   }
   if (state.postDrawPlay) {
+    return false;
+  }
+  if (isAceSkipChallenge(state)) {
     return false;
   }
   if (state.sevenChainTotal > 0) {
@@ -638,6 +689,8 @@ function pickAutomatedPlay(state: GameState, playerIndex: number): { cardIds: st
       return null;
     }
     stacks = [sevens];
+  } else if (isAceSkipChallenge(state)) {
+    stacks = getAceStacks(player.hand);
   } else {
     stacks = getPlayableStacks(player.hand, topCard);
   }
@@ -691,6 +744,15 @@ export function runSingleAutomatedTurn(state: GameState): GameState {
   }
 
   let next = autoDeclare(state, state.currentPlayerIndex);
+
+  if (isAceSkipChallenge(next)) {
+    const pick = pickAutomatedPlay(next, next.currentPlayerIndex);
+    if (pick) {
+      return playCards(next, next.currentPlayerIndex, pick.cardIds, pick.suit);
+    }
+    return acceptAceSkip(next);
+  }
+
   const pick = pickAutomatedPlay(next, state.currentPlayerIndex);
 
   if (pick) {

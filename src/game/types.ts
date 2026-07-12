@@ -42,7 +42,7 @@ export type GameState = {
   roundNumber: number;
   lastRoundScores: Record<string, number> | null;
   sevenChainTotal: number;
-  aceChainTotal: number;
+  aceSkipsRemaining: number;
   postDrawPlay: boolean;
   pendingPrompt: PendingPrompt | null;
   lastPlay: LastPlay | null;
