@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { isRedSuit, rankHint, rankLabel, suitSymbol } from '../game/cards';
 import { Card, Suit } from '../game/types';
+import { cardShadow } from '../utils/shadows';
 
 type PlayingCardProps = {
   card: Card;
@@ -118,11 +119,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#d4d0c8',
     padding: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    ...cardShadow({ opacity: 0.15, radius: 4, offsetY: 2, elevation: 3 }),
   },
   cardCompact: {
     width: 44,

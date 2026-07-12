@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { PlayingCard } from './PlayingCard';
 import { getDiscardAnchor, getSeatAnchor } from './seatAnchors';
 import { Card, SeatPosition } from '../game/types';
+import { cardShadow } from '../utils/shadows';
 
 const HUMAN_DURATION = 720;
 const HUMAN_STAGGER = 180;
@@ -133,10 +134,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
+    ...cardShadow({ opacity: 0.25, radius: 8, offsetY: 4, elevation: 8 }),
   },
 });

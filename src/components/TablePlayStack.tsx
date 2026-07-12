@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { PlayingCard } from './PlayingCard';
 import { Card } from '../game/types';
+import { cardShadow } from '../utils/shadows';
 
 type TablePlayStackProps = {
   cards: Card[];
@@ -45,10 +46,6 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   cardSlot: {
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    ...cardShadow({ opacity: 0.2, radius: 4, offsetY: 2, elevation: 4 }),
   },
 });

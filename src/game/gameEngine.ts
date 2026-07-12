@@ -150,7 +150,7 @@ function finishRound(
       aceSkipsRemaining: 0,
       postDrawPlay: false,
       pendingPrompt: null,
-      message: `${message} ${matchWinner.name} wins the match!`,
+      message: `${message} ${matchWinner.name} ${matchWinner.name === "You" ? "win" : "wins"} the match!`,
     };
   }
 

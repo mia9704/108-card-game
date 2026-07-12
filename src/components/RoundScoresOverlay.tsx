@@ -22,7 +22,7 @@ export function RoundScoresOverlay({ game, onContinue, continueLabel }: RoundSco
           {game.phase === 'matchOver' ? 'Match Over' : `Round ${game.roundNumber} Complete`}
         </Text>
         {winner ? (
-          <Text style={styles.winner}>{winner.name} wins the round!</Text>
+          <Text style={styles.winner}>{winner.name} {winner.name === "You" ? "win" : "wins"} the round!</Text>
         ) : null}
 
         <View style={styles.table}>

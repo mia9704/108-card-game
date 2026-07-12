@@ -14,7 +14,14 @@
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3"
   },
+  "engines": {
+    "node": ">=20.19.4"
+  },
   "scripts": {
+    "prestart": "node scripts/check-node.mjs",
+    "preandroid": "node scripts/check-node.mjs",
+    "preios": "node scripts/check-node.mjs",
+    "preweb": "node scripts/check-node.mjs",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
