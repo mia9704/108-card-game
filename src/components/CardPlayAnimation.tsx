@@ -4,12 +4,15 @@ import { PlayingCard } from './PlayingCard';
 import { getDiscardAnchor, getSeatAnchor } from './seatAnchors';
 import { Card, SeatPosition } from '../game/types';
 
-const CARD_DURATION = 720;
-const CARD_STAGGER = 180;
+const HUMAN_DURATION = 720;
+const HUMAN_STAGGER = 180;
+const CPU_DURATION = 980;
+const CPU_STAGGER = 260;
 
 type CardPlayAnimationProps = {
   cards: Card[];
   seat: SeatPosition;
+  slow?: boolean;
   onComplete: () => void;
 };
 
@@ -18,12 +21,16 @@ function FlyingCard({
   seat,
   index,
   total,
+  duration,
+  stagger,
   onDone,
 }: {
   card: Card;
   seat: SeatPosition;
   index: number;
   total: number;
+  duration: number;
+  stagger: number;
   onDone: () => void;
 }) {
   const progress = useRef(new Animated.Value(0)).current;
@@ -36,8 +43,8 @@ function FlyingCard({
   useEffect(() => {
     Animated.timing(progress, {
       toValue: 1,
-      duration: CARD_DURATION,
-      delay: index * CARD_STAGGER,
+      duration,
+      delay: index * stagger,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start(({ finished }) => {
@@ -45,7 +52,7 @@ function FlyingCard({
         onDone();
       }
     });
-  }, [index, onDone, progress]);
+  }, [duration, index, onDone, progress, stagger]);
 
   const translateX = progress.interpolate({
     inputRange: [0, 1],
@@ -87,8 +94,10 @@ function FlyingCard({
   );
 }
 
-export function CardPlayAnimation({ cards, seat, onComplete }: CardPlayAnimationProps) {
+export function CardPlayAnimation({ cards, seat, slow = false, onComplete }: CardPlayAnimationProps) {
   const completed = useRef(0);
+  const duration = slow ? CPU_DURATION : HUMAN_DURATION;
+  const stagger = slow ? CPU_STAGGER : HUMAN_STAGGER;
 
   function handleCardDone() {
     completed.current += 1;
@@ -106,6 +115,8 @@ export function CardPlayAnimation({ cards, seat, onComplete }: CardPlayAnimation
           seat={seat}
           index={index}
           total={cards.length}
+          duration={duration}
+          stagger={stagger}
           onDone={handleCardDone}
         />
       ))}

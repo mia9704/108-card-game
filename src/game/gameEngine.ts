@@ -18,7 +18,7 @@ import {
 import { Card, GameState, PendingPrompt, Player, Rank, Suit } from './types';
 
 const STARTING_HAND_SIZE = 5;
-const PLAYER_NAMES = ['You', 'Alex', 'Sam', 'Jordan'];
+const PLAYER_NAMES = ['You', 'Sam', 'Alex', 'Jordan'];
 
 function createPlayers(): Player[] {
   return PLAYER_NAMES.map((name, index) => ({
@@ -243,15 +243,11 @@ function finalizePlay(
     return finishRound(next, player.id, cardsToDiscard);
   }
 
-  if (needsDeclaration(remainingHand) && !players[playerIndex].declared) {
-    if (!players[playerIndex].isHuman) {
-      const declaredPlayers = next.players.map((p, index) =>
-        index === playerIndex ? { ...p, declared: true } : p,
-      );
-      next = { ...next, players: declaredPlayers, message: `${player.name} declares one card left.` };
-    } else {
-      next = { ...next, message: 'One card left — tap Declare!' };
-    }
+  if (needsDeclaration(remainingHand) && !players[playerIndex].declared && !players[playerIndex].isHuman) {
+    const declaredPlayers = next.players.map((p, index) =>
+      index === playerIndex ? { ...p, declared: true } : p,
+    );
+    next = { ...next, players: declaredPlayers, message: `${player.name} declares one card left.` };
   }
 
   const rank = playedCards[0].rank;
@@ -260,11 +256,14 @@ function finalizePlay(
   if (rank === '7') {
     const sevenChainTotal = next.sevenChainTotal + count;
     const nextIndex = nextPlayerIndex(next, 1);
-    return {
-      ...withCurrentPlayer(next, nextIndex),
-      sevenChainTotal,
-      message: `${player.name} played ${count} seven(s). Chain total: ${sevenChainTotal}.`,
-    };
+    return withDeclareReminder(
+      {
+        ...withCurrentPlayer(next, nextIndex),
+        sevenChainTotal,
+        message: `${player.name} played ${count} seven(s). Chain total: ${sevenChainTotal}.`,
+      },
+      playerIndex,
+    );
   }
 
   if (rank === 'A') {
@@ -275,7 +274,7 @@ function finalizePlay(
       message: `${player.name} played ${count} ace(s). Ace chain: ${aceTotal}.`,
     };
     const nextIndex = nextPlayerIndex(next, 1);
-    return withCurrentPlayer(next, nextIndex);
+    return withDeclareReminder(withCurrentPlayer(next, nextIndex), playerIndex);
   }
 
   if (next.aceChainTotal > 0) {
@@ -287,7 +286,7 @@ function finalizePlay(
   }
 
   const nextIndex = nextPlayerIndex(next, 1);
-  return withCurrentPlayer(next, nextIndex);
+  return withDeclareReminder(withCurrentPlayer(next, nextIndex), playerIndex);
 }
 
 function playCards(
@@ -327,13 +326,46 @@ function playCards(
 }
 
 function endTurn(state: GameState): GameState {
+  const endingPlayer = state.players[state.currentPlayerIndex];
   let next: GameState = { ...state, postDrawPlay: false };
 
   if (next.aceChainTotal > 0) {
-    return resolveAceSkip(next);
+    next = resolveAceSkip(next);
+  } else {
+    next = withCurrentPlayer(next, nextPlayerIndex(next, 1));
   }
 
-  return withCurrentPlayer(next, nextPlayerIndex(next, 1));
+  if (
+    endingPlayer.isHuman &&
+    needsDeclaration(endingPlayer.hand) &&
+    !endingPlayer.declared
+  ) {
+    next = { ...next, message: 'Declare before your next turn!' };
+  }
+
+  return next;
+}
+
+function beginHumanTurn(state: GameState): GameState {
+  const humanIndex = state.players.findIndex((player) => player.isHuman);
+  if (state.currentPlayerIndex !== humanIndex) {
+    return state;
+  }
+
+  const human = state.players[humanIndex];
+  if (needsDeclaration(human.hand) && !human.declared) {
+    return applyDeclarePenalty(state, humanIndex, 'Forgot to declare before your turn.');
+  }
+
+  return { ...state, message: 'Your turn' };
+}
+
+function withDeclareReminder(state: GameState, playedByIndex: number): GameState {
+  const player = state.players[playedByIndex];
+  if (player.isHuman && needsDeclaration(player.hand) && !player.declared) {
+    return { ...state, message: 'Declare before your next turn!' };
+  }
+  return state;
 }
 
 function drawSevenPenalty(state: GameState, playerIndex: number): GameState {
@@ -524,18 +556,30 @@ export function passHumanTurn(state: GameState): GameState {
   return endTurn(state);
 }
 
+export function humanCanDeclare(state: GameState): boolean {
+  if (state.phase !== 'playing') {
+    return false;
+  }
+  const humanIndex = state.players.findIndex((player) => player.isHuman);
+  if (humanIndex === -1 || state.currentPlayerIndex === humanIndex) {
+    return false;
+  }
+  const human = state.players[humanIndex];
+  return needsDeclaration(human.hand) && !human.declared;
+}
+
 export function declareOneLeft(state: GameState): GameState {
   const humanIndex = state.players.findIndex((player) => player.isHuman);
-  if (humanIndex === -1 || !humanCanAct(state)) {
+  if (humanIndex === -1) {
     return state;
   }
 
-  const human = state.players[humanIndex];
-  if (!needsDeclaration(human.hand)) {
-    return { ...state, message: 'You do not need to declare yet.' };
+  if (humanCanAct(state)) {
+    return { ...state, message: 'Declare after your turn ends.' };
   }
-  if (human.declared) {
-    return { ...state, message: 'Already declared.' };
+
+  if (!humanCanDeclare(state)) {
+    return { ...state, message: 'You do not need to declare yet.' };
   }
 
   const players = state.players.map((player, index) =>
@@ -643,7 +687,7 @@ export function runSingleAutomatedTurn(state: GameState): GameState {
   const player = state.players[state.currentPlayerIndex];
 
   if (player.isHuman) {
-    return { ...state, message: 'Your turn' };
+    return beginHumanTurn(state);
   }
 
   let next = autoDeclare(state, state.currentPlayerIndex);
@@ -673,7 +717,7 @@ export function runAutomatedTurns(state: GameState): GameState {
     const player = next.players[next.currentPlayerIndex];
 
     if (player.isHuman) {
-      return { ...next, lastPlay: null, message: 'Your turn' };
+      return beginHumanTurn({ ...next, lastPlay: null });
     }
 
     next = runSingleAutomatedTurn(next);

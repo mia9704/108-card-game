@@ -47,7 +47,7 @@ export function PlayingCard({
   );
 
   const content = (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, selected && styles.wrapperSelected]}>
       {cardFace}
       {card.calledSuit ? (
         <Text style={[styles.calledSuitNote, calledRed ? styles.red : styles.black]}>
@@ -143,7 +143,11 @@ const styles = StyleSheet.create({
   },
   cardSelected: {
     borderColor: '#f5c542',
-    transform: [{ translateY: -12 }],
+    borderWidth: 3,
+  },
+  wrapperSelected: {
+    marginTop: -10,
+    paddingBottom: 10,
   },
   cardPlayable: {
     borderColor: '#7dcea0',

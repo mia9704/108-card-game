@@ -38,8 +38,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 80,
+    minHeight: 90,
     minWidth: 80,
+    paddingTop: 6,
+    paddingHorizontal: 8,
+    overflow: 'visible',
   },
   cardSlot: {
     shadowColor: '#000',

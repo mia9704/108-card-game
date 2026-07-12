@@ -60,13 +60,14 @@ export function PlayerSeat({
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.handScroll}
           contentContainerStyle={styles.humanHand}
         >
           {player.hand.map((card, index) => (
             <View key={card.id} style={[styles.fanCard, { marginLeft: index === 0 ? 0 : -24 }]}>
               <PlayingCard
                 card={card}
-                selected={selectedIds.includes(card.id)}
+                selected={canSelect && selectedIds.includes(card.id)}
                 playable={canSelect && playableIds.has(card.id)}
                 onPress={onCardPress ? () => onCardPress(card) : undefined}
               />
@@ -89,14 +90,16 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
     maxWidth: '100%',
+    overflow: 'visible',
   },
   seat_bottom: {
     width: '100%',
-    minHeight: 130,
+    minHeight: 148,
   },
   seat_top: {
     width: '92%',
-    minHeight: 88,
+    minHeight: 96,
+    paddingTop: 4,
   },
   seat_left: {
     width: 88,
@@ -155,10 +158,16 @@ const styles = StyleSheet.create({
   fanRight: {
     transform: [{ rotate: '-90deg' }],
   },
-  fanCard: {},
+  fanCard: {
+    overflow: 'visible',
+  },
+  handScroll: {
+    overflow: 'visible',
+  },
   humanHand: {
     alignItems: 'flex-end',
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
 });

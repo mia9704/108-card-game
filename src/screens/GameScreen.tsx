@@ -22,6 +22,7 @@ import {
   getHumanPlayableStacks,
   getScoreboard,
   humanCanAct,
+  humanCanDeclare,
   humanCanDraw,
   humanCanPassAfterDraw,
   humanCanPlayCards,
@@ -51,6 +52,7 @@ export function GameScreen() {
   const canPlayCards = humanCanPlayCards(game);
   const canDraw = humanCanDraw(game);
   const canPassAfterDraw = humanCanPassAfterDraw(game);
+  const canDeclare = humanCanDeclare(game);
   const scoreboard = getScoreboard(game);
   const suitPrompt = game.pendingPrompt?.type === 'suitChoice' ? game.pendingPrompt : null;
   const lastPlay = game.lastPlay;
@@ -96,6 +98,18 @@ export function GameScreen() {
   }, [game.discardPile, tablePlay.length]);
 
   useEffect(() => {
+    if (!isYourTurn) {
+      setSelectedIds([]);
+    }
+  }, [isYourTurn]);
+
+  useEffect(() => {
+    setSelectedIds((current) =>
+      current.filter((id) => human.hand.some((card) => card.id === id)),
+    );
+  }, [human.hand]);
+
+  useEffect(() => {
     if (lastPlay && !animatingPlay && !suitPrompt) {
       setAnimatingPlay(true);
     }
@@ -113,7 +127,7 @@ export function GameScreen() {
     if (shouldContinueAutomation(game)) {
       automationTimer.current = setTimeout(() => {
         setGame((current) => runSingleAutomatedTurn(current));
-      }, 350);
+      }, 750);
     }
 
     return () => {
@@ -222,7 +236,7 @@ export function GameScreen() {
           <PlayerSeat
             player={getPlayerAtSeat('top')}
             seat="top"
-            isActive={game.currentPlayerIndex === 1}
+            isActive={game.currentPlayerIndex === 2}
             score={getScoreForPlayer(getPlayerAtSeat('top').id)}
           />
         </View>
@@ -232,7 +246,7 @@ export function GameScreen() {
             <PlayerSeat
               player={getPlayerAtSeat('left')}
               seat="left"
-              isActive={game.currentPlayerIndex === 2}
+              isActive={game.currentPlayerIndex === 1}
               score={getScoreForPlayer(getPlayerAtSeat('left').id)}
             />
           </View>
@@ -308,6 +322,11 @@ export function GameScreen() {
                 <Text style={styles.secondaryButtonText}>Pass</Text>
               </Pressable>
             ) : null}
+          </View>
+        ) : null}
+
+        {canDeclare ? (
+          <View style={styles.declareRow}>
             <Pressable style={styles.declareButton} onPress={handleDeclare}>
               <Text style={styles.declareButtonText}>Declare One Left</Text>
             </Pressable>
@@ -319,6 +338,7 @@ export function GameScreen() {
         <CardPlayAnimation
           cards={lastPlay.cards}
           seat={PLAYER_SEATS[lastPlay.playerIndex]}
+          slow={lastPlay.playerIndex !== 0}
           onComplete={handleAnimationComplete}
         />
       ) : null}
@@ -368,7 +388,8 @@ const styles = StyleSheet.create({
   },
   topSeat: {
     alignItems: 'center',
-    paddingTop: 2,
+    paddingTop: 6,
+    overflow: 'visible',
   },
   middleRow: {
     flex: 1,
@@ -421,6 +442,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
     paddingHorizontal: 8,
+    overflow: 'visible',
   },
   actions: {
     flexDirection: 'row',
@@ -463,5 +485,10 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.45,
+  },
+  declareRow: {
+    alignItems: 'center',
+    marginTop: 10,
+    paddingHorizontal: 8,
   },
 });

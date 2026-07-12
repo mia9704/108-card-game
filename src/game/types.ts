@@ -51,4 +51,5 @@ export type GameState = {
 
 export type SeatPosition = 'bottom' | 'top' | 'left' | 'right';
 
-export const PLAYER_SEATS: SeatPosition[] = ['bottom', 'top', 'left', 'right'];
+/** Seat layout clockwise from bottom: You → left → top → right */
+export const PLAYER_SEATS: SeatPosition[] = ['bottom', 'left', 'top', 'right'];
