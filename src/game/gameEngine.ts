@@ -19,7 +19,7 @@ import {
 import { Card, GameState, PendingPrompt, Player, Rank, Suit } from './types';
 
 const STARTING_HAND_SIZE = 5;
-const PLAYER_NAMES = ['You', 'Sam', 'Alex', 'Jordan'];
+const PLAYER_NAMES = ['You', 'Sara', 'Bill', 'Mishelle'];
 
 function createPlayers(): Player[] {
   return PLAYER_NAMES.map((name, index) => ({

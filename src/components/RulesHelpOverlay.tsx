@@ -8,8 +8,6 @@ const SECTIONS = [
   {
     title: 'Overview',
     body: [
-      '4 players (you + 3 opponents), clockwise turn order.',
-      '32-card deck: A, K, Q, J, 10, 9, 8, 7 — every card is unique.',
       '5 cards dealt to each player at the start of every round.',
       'Lowest cumulative score wins the match.',
     ],
