@@ -29,6 +29,13 @@ export type LastPlay = {
   cards: Card[];
 };
 
+export type LastDraw = {
+  playerIndex: number;
+  cards: Card[];
+  postDrawPlay?: boolean;
+  message?: string;
+};
+
 export type GameState = {
   players: Player[];
   currentPlayerIndex: number;
@@ -46,6 +53,7 @@ export type GameState = {
   postDrawPlay: boolean;
   pendingPrompt: PendingPrompt | null;
   lastPlay: LastPlay | null;
+  lastDraw: LastDraw | null;
   message: string;
 };
 

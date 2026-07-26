@@ -8,14 +8,18 @@ import {
   Text,
   View,
 } from 'react-native';
+import { CardDrawAnimation } from '../components/CardDrawAnimation';
 import { CardPlayAnimation } from '../components/CardPlayAnimation';
 import { PlayerSeat } from '../components/PlayerSeat';
 import { PlayingCard, SuitPicker } from '../components/PlayingCard';
 import { TablePlayStack } from '../components/TablePlayStack';
 import { RoundScoresOverlay } from '../components/RoundScoresOverlay';
+import { RulesHelpOverlay } from '../components/RulesHelpOverlay';
 import { isSameRankStack } from '../game/rules';
+import { useTableCardMetrics } from '../utils/tableCardSize';
 import {
   acceptHumanAceSkip,
+  clearLastDraw,
   clearLastPlay,
   completeSuitChoice,
   declareOneLeft,
@@ -42,11 +46,15 @@ export function GameScreen() {
   const [game, setGame] = useState<GameState>(() => startGame());
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [animatingPlay, setAnimatingPlay] = useState(false);
+  const [animatingDraw, setAnimatingDraw] = useState(false);
   const [tablePlay, setTablePlay] = useState<Card[]>([]);
+  const [showHelp, setShowHelp] = useState(false);
   const automationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const discardPulse = useRef(new Animated.Value(1)).current;
+  const drawPilePulse = useRef(new Animated.Value(1)).current;
 
   const human = game.players[0];
+  const tableCardMetrics = useTableCardMetrics();
   const topCard = game.discardPile[game.discardPile.length - 1];
   const playableStacks = useMemo(() => getHumanPlayableStacks(game), [game]);
   const playableIds = new Set(playableStacks.flatMap((stack) => stack.map((card) => card.id)));
@@ -59,11 +67,14 @@ export function GameScreen() {
   const scoreboard = getScoreboard(game);
   const suitPrompt = game.pendingPrompt?.type === 'suitChoice' ? game.pendingPrompt : null;
   const lastPlay = game.lastPlay;
+  const lastDraw = game.lastDraw;
   const showRoundScores =
     (game.phase === 'roundOver' || game.phase === 'matchOver') &&
     game.lastRoundScores &&
     !animatingPlay &&
-    !lastPlay;
+    !animatingDraw &&
+    !lastPlay &&
+    !lastDraw;
 
   const pulseDiscard = useCallback(() => {
     discardPulse.setValue(1);
@@ -83,6 +94,24 @@ export function GameScreen() {
     ]).start();
   }, [discardPulse]);
 
+  const pulseDrawPile = useCallback(() => {
+    drawPilePulse.setValue(1);
+    Animated.sequence([
+      Animated.timing(drawPilePulse, {
+        toValue: 1.12,
+        duration: 140,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(drawPilePulse, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [drawPilePulse]);
+
   const handleAnimationComplete = useCallback(() => {
     setAnimatingPlay(false);
     pulseDiscard();
@@ -93,6 +122,12 @@ export function GameScreen() {
       return clearLastPlay(current);
     });
   }, [pulseDiscard]);
+
+  const handleDrawAnimationComplete = useCallback(() => {
+    setAnimatingDraw(false);
+    pulseDrawPile();
+    setGame((current) => clearLastDraw(current));
+  }, [pulseDrawPile]);
 
   useEffect(() => {
     if (tablePlay.length === 0 && game.discardPile.length > 0) {
@@ -119,11 +154,17 @@ export function GameScreen() {
   }, [lastPlay, animatingPlay, suitPrompt]);
 
   useEffect(() => {
+    if (lastDraw && !animatingDraw && !suitPrompt && !lastPlay) {
+      setAnimatingDraw(true);
+    }
+  }, [lastDraw, animatingDraw, suitPrompt, lastPlay]);
+
+  useEffect(() => {
     if (automationTimer.current) {
       clearTimeout(automationTimer.current);
     }
 
-    if (animatingPlay || lastPlay || suitPrompt) {
+    if (animatingPlay || animatingDraw || lastPlay || lastDraw || suitPrompt) {
       return;
     }
 
@@ -138,7 +179,7 @@ export function GameScreen() {
         clearTimeout(automationTimer.current);
       }
     };
-  }, [game, animatingPlay, lastPlay, suitPrompt]);
+  }, [game, animatingPlay, animatingDraw, lastPlay, lastDraw, suitPrompt]);
 
   function toggleSelect(card: Card) {
     if (!canPlayCards) {
@@ -235,8 +276,15 @@ export function GameScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.title}>108 Card Game</Text>
-        <Text style={styles.subtitle}>Round {game.roundNumber} · 32-card deck · 5 each</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>108 Card Game</Text>
+            <Text style={styles.subtitle}>Round {game.roundNumber} · 32-card deck · 5 each</Text>
+          </View>
+          <Pressable style={styles.helpButton} onPress={() => setShowHelp(true)}>
+            <Text style={styles.helpButtonText}>?</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.tableArea}>
@@ -262,12 +310,14 @@ export function GameScreen() {
           <View style={styles.center}>
             <View style={styles.pileRow}>
               <Animated.View style={{ transform: [{ scale: discardPulse }] }}>
-                <TablePlayStack cards={animatingPlay && lastPlay ? [] : tablePlay} />
+                <TablePlayStack cards={tablePlay} />
               </Animated.View>
-              <View style={styles.drawPile}>
-                <PlayingCard card={topCard} faceDown />
-                <Text style={styles.drawCount}>{game.drawPile.length}</Text>
-              </View>
+              <Animated.View style={{ transform: [{ scale: drawPilePulse }] }}>
+                <View style={styles.drawPile}>
+                  <PlayingCard card={topCard} faceDown tableMetrics={tableCardMetrics} />
+                  <Text style={styles.drawCount}>{game.drawPile.length}</Text>
+                </View>
+              </Animated.View>
             </View>
 
             {game.sevenChainTotal > 0 ? (
@@ -340,9 +390,13 @@ export function GameScreen() {
           </View>
         ) : null}
 
-        {canDeclare ? (
+        {game.phase === 'playing' ? (
           <View style={styles.declareRow}>
-            <Pressable style={styles.declareButton} onPress={handleDeclare}>
+            <Pressable
+              style={[styles.declareButton, !canDeclare && styles.buttonDisabled]}
+              onPress={handleDeclare}
+              disabled={!canDeclare}
+            >
               <Text style={styles.declareButtonText}>Declare One Left</Text>
             </Pressable>
           </View>
@@ -355,6 +409,15 @@ export function GameScreen() {
           seat={PLAYER_SEATS[lastPlay.playerIndex]}
           slow={lastPlay.playerIndex !== 0}
           onComplete={handleAnimationComplete}
+        />
+      ) : null}
+
+      {lastDraw && animatingDraw ? (
+        <CardDrawAnimation
+          cards={lastDraw.cards}
+          seat={PLAYER_SEATS[lastDraw.playerIndex]}
+          slow={lastDraw.playerIndex !== 0}
+          onComplete={handleDrawAnimationComplete}
         />
       ) : null}
 
@@ -373,6 +436,8 @@ export function GameScreen() {
           continueLabel={game.phase === 'matchOver' ? 'New Match' : 'Next Round'}
         />
       ) : null}
+
+      {showHelp ? <RulesHelpOverlay onClose={() => setShowHelp(false)} /> : null}
     </SafeAreaView>
   );
 }
@@ -386,6 +451,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 4,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerText: {
+    flex: 1,
+  },
+  helpButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(247, 243, 232, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(247, 243, 232, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  helpButtonText: {
+    color: '#f7f3e8',
+    fontSize: 20,
+    fontWeight: '700',
   },
   title: {
     color: '#f7f3e8',
@@ -425,7 +514,7 @@ const styles = StyleSheet.create({
   pileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 18,
+    gap: 24,
   },
   drawPile: {
     alignItems: 'center',

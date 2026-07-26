@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import { PlayingCard } from './PlayingCard';
 import { Card } from '../game/types';
 import { cardShadow } from '../utils/shadows';
+import { useTableCardMetrics } from '../utils/tableCardSize';
 
 type TablePlayStackProps = {
   cards: Card[];
@@ -9,25 +10,27 @@ type TablePlayStackProps = {
 };
 
 export function TablePlayStack({ cards }: TablePlayStackProps) {
+  const metrics = useTableCardMetrics();
+
   if (cards.length === 0) {
     return null;
   }
 
   return (
-    <View style={styles.stack}>
+    <View style={[styles.stack, { minHeight: metrics.height + 24, minWidth: metrics.width + 16 }]}>
       {cards.map((card, index) => (
         <View
           key={card.id}
           style={[
             styles.cardSlot,
             {
-              marginLeft: index === 0 ? 0 : -36,
+              marginLeft: index === 0 ? 0 : -metrics.overlap,
               zIndex: index,
               transform: [{ rotate: `${(index - (cards.length - 1) / 2) * 4}deg` }],
             },
           ]}
         >
-          <PlayingCard card={card} compact />
+          <PlayingCard card={card} tableMetrics={metrics} />
         </View>
       ))}
     </View>
@@ -39,8 +42,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 90,
-    minWidth: 80,
     paddingTop: 6,
     paddingHorizontal: 8,
     overflow: 'visible',

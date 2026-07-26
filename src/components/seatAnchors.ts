@@ -19,3 +19,7 @@ export function getSeatAnchor(seat: SeatPosition): { x: number; y: number } {
 export function getDiscardAnchor(): { x: number; y: number } {
   return { x: width * 0.5, y: height * 0.44 };
 }
+
+export function getDrawPileAnchor(cardWidth = 72): { x: number; y: number } {
+  return { x: width * 0.5 + cardWidth * 0.85 + 24, y: height * 0.44 };
+}

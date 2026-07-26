@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { isRedSuit, rankHint, rankLabel, suitSymbol } from '../game/cards';
 import { Card, Suit } from '../game/types';
 import { cardShadow } from '../utils/shadows';
+import { TableCardMetrics } from '../utils/tableCardSize';
 
 type PlayingCardProps = {
   card: Card;
@@ -9,6 +10,8 @@ type PlayingCardProps = {
   selected?: boolean;
   playable?: boolean;
   compact?: boolean;
+  tableMetrics?: TableCardMetrics;
+  hideCalledSuit?: boolean;
   onPress?: () => void;
 };
 
@@ -18,16 +21,27 @@ export function PlayingCard({
   selected = false,
   playable = false,
   compact = false,
+  tableMetrics,
+  hideCalledSuit = false,
   onPress,
 }: PlayingCardProps) {
   const red = isRedSuit(card.suit);
   const hint = rankHint(card.rank);
   const calledRed = card.calledSuit ? isRedSuit(card.calledSuit) : false;
+  const tableCardStyle = tableMetrics ? getTableCardStyle(tableMetrics) : null;
+  const tableTextStyles = tableMetrics ? getTableTextStyles(tableMetrics) : null;
 
   if (faceDown) {
     return (
-      <View style={[styles.card, styles.cardBack, compact && styles.cardCompact]}>
-        <Text style={styles.backPattern}>108</Text>
+      <View
+        style={[
+          styles.card,
+          styles.cardBack,
+          compact && !tableMetrics && styles.cardCompact,
+          tableCardStyle,
+        ]}
+      >
+        <Text style={[styles.backPattern, tableTextStyles?.backPattern]}>108</Text>
       </View>
     );
   }
@@ -36,22 +50,33 @@ export function PlayingCard({
     <View
       style={[
         styles.card,
-        compact && styles.cardCompact,
+        compact && !tableMetrics && styles.cardCompact,
+        tableCardStyle,
         selected && styles.cardSelected,
         playable && styles.cardPlayable,
       ]}
     >
-      <Text style={[styles.rank, red ? styles.red : styles.black]}>{rankLabel(card.rank)}</Text>
-      <Text style={[styles.suit, red ? styles.red : styles.black]}>{suitSymbol(card.suit)}</Text>
-      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+      <Text style={[styles.rank, tableTextStyles?.rank, red ? styles.red : styles.black]}>
+        {rankLabel(card.rank)}
+      </Text>
+      <Text style={[styles.suit, tableTextStyles?.suit, red ? styles.red : styles.black]}>
+        {suitSymbol(card.suit)}
+      </Text>
+      {hint ? <Text style={[styles.hint, tableTextStyles?.hint]}>{hint}</Text> : null}
     </View>
   );
 
   const content = (
     <View style={[styles.wrapper, selected && styles.wrapperSelected]}>
       {cardFace}
-      {card.calledSuit ? (
-        <Text style={[styles.calledSuitNote, calledRed ? styles.red : styles.black]}>
+      {card.calledSuit && !hideCalledSuit ? (
+        <Text
+          style={[
+            styles.calledSuitNote,
+            tableTextStyles?.calledSuit,
+            calledRed ? styles.red : styles.black,
+          ]}
+        >
           Calls {suitSymbol(card.calledSuit)}
         </Text>
       ) : null}
@@ -67,6 +92,26 @@ export function PlayingCard({
       {content}
     </Pressable>
   );
+}
+
+function getTableCardStyle(metrics: TableCardMetrics): ViewStyle {
+  return {
+    width: metrics.width,
+    height: metrics.height,
+    padding: metrics.padding,
+    borderRadius: metrics.borderRadius,
+    marginHorizontal: 2,
+  };
+}
+
+function getTableTextStyles(metrics: TableCardMetrics) {
+  return {
+    rank: { fontSize: metrics.rankSize },
+    suit: { fontSize: metrics.suitSize, marginTop: Math.max(2, Math.round(metrics.suitSize * 0.15)) },
+    hint: { fontSize: metrics.hintSize, marginTop: Math.max(4, Math.round(metrics.hintSize * 0.7)) },
+    calledSuit: { fontSize: metrics.calledSuitSize },
+    backPattern: { fontSize: metrics.backPatternSize },
+  };
 }
 
 export function SuitPicker({

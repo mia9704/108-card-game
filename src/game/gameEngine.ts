@@ -49,7 +49,7 @@ function reshuffleDrawPile(state: GameState): GameState {
   };
 }
 
-function drawCards(state: GameState, playerIndex: number, count: number): GameState {
+function pullCardsFromDrawPile(state: GameState, count: number): { state: GameState; drawn: Card[] } {
   let next = reshuffleDrawPile(state);
   const drawn: Card[] = [];
 
@@ -65,18 +65,67 @@ function drawCards(state: GameState, playerIndex: number, count: number): GameSt
     next = { ...next, drawPile };
   }
 
-  const players = next.players.map((player, index) => {
+  return { state: next, drawn };
+}
+
+function addCardsToHand(state: GameState, playerIndex: number, cards: Card[]): GameState {
+  const players = state.players.map((player, index) => {
     if (index !== playerIndex) {
       return player;
     }
     return {
       ...player,
-      hand: sortHand([...player.hand, ...drawn]),
+      hand: sortHand([...player.hand, ...cards]),
       declared: false,
     };
   });
 
-  return { ...next, players };
+  return { ...state, players };
+}
+
+type DrawOptions = {
+  postDrawPlay?: boolean;
+  message?: string;
+};
+
+function drawCards(
+  state: GameState,
+  playerIndex: number,
+  count: number,
+  options?: DrawOptions,
+): GameState {
+  const { state: next, drawn } = pullCardsFromDrawPile(state, count);
+  if (drawn.length === 0) {
+    return state;
+  }
+
+  return {
+    ...next,
+    lastDraw: {
+      playerIndex,
+      cards: drawn,
+      postDrawPlay: options?.postDrawPlay,
+      message: options?.message,
+    },
+  };
+}
+
+export function clearLastDraw(state: GameState): GameState {
+  if (!state.lastDraw) {
+    return state;
+  }
+
+  const { playerIndex, cards, postDrawPlay, message } = state.lastDraw;
+  let next = addCardsToHand({ ...state, lastDraw: null }, playerIndex, cards);
+
+  if (postDrawPlay) {
+    next = { ...next, postDrawPlay: true };
+  }
+  if (message) {
+    next = { ...next, message };
+  }
+
+  return next;
 }
 
 function nextPlayerIndex(state: GameState, steps = 1): number {
@@ -97,13 +146,9 @@ function resetDeclaredIfNeeded(player: Player, hand: Card[]): Player {
 
 function applyDeclarePenalty(state: GameState, playerIndex: number, reason: string): GameState {
   const player = state.players[playerIndex];
-  let next = drawCards(state, playerIndex, 1);
-  next = {
-    ...next,
+  return drawCards(state, playerIndex, 1, {
     message: `${player.name} forgot to declare and draws 1. ${reason}`,
-    pendingPrompt: null,
-  };
-  return next;
+  });
 }
 
 function finishRound(
@@ -173,7 +218,7 @@ export function clearLastPlay(state: GameState): GameState {
 }
 
 export function shouldContinueAutomation(state: GameState): boolean {
-  if (state.phase !== 'playing' || state.lastPlay || state.pendingPrompt) {
+  if (state.phase !== 'playing' || state.lastPlay || state.lastDraw || state.pendingPrompt) {
     return false;
   }
   return !state.players[state.currentPlayerIndex].isHuman;
@@ -405,18 +450,19 @@ function withDeclareReminder(state: GameState, playedByIndex: number): GameState
 function drawSevenPenalty(state: GameState, playerIndex: number): GameState {
   const drawCount = 7 * state.sevenChainTotal;
   const player = state.players[playerIndex];
-  let next = drawCards(state, playerIndex, drawCount);
+  let next = drawCards(state, playerIndex, drawCount, {
+    postDrawPlay: true,
+    message: `${player.name} draws ${drawCount}. You may play cards or pass.`,
+  });
   next = {
     ...next,
     sevenChainTotal: 0,
-    postDrawPlay: true,
-    message: `${player.name} draws ${drawCount}. You may play cards or pass.`,
   };
 
   return withCurrentPlayer(next, playerIndex);
 }
 
-function mustDraw(state: GameState, playerIndex: number): GameState {
+function mustDraw(state: GameState, playerIndex: number, voluntary = false): GameState {
   const player = state.players[playerIndex];
   const topCard = getTopCard(state.discardPile);
 
@@ -424,17 +470,14 @@ function mustDraw(state: GameState, playerIndex: number): GameState {
     return drawSevenPenalty(state, playerIndex);
   }
 
-  if (!hasPlayableCard(player.hand, topCard)) {
-    let next = drawCards(state, playerIndex, 1);
-    next = {
-      ...next,
-      message: `${player.name} draws 1. You may play a card or pass.`,
-    };
-
-    return {
-      ...withCurrentPlayer(next, playerIndex),
-      postDrawPlay: true,
-    };
+  if (voluntary || !hasPlayableCard(player.hand, topCard)) {
+    return withCurrentPlayer(
+      drawCards(state, playerIndex, 1, {
+        postDrawPlay: true,
+        message: `${player.name} draws 1. You may play a card or pass.`,
+      }),
+      playerIndex,
+    );
   }
 
   return { ...state, message: 'You still have a playable card.' };
@@ -472,6 +515,7 @@ function dealRound(state: GameState): GameState {
     postDrawPlay: false,
     pendingPrompt: null,
     lastPlay: null,
+    lastDraw: null,
     message: 'New round! Match rank or suit. Stack same-rank cards.',
   };
 }
@@ -495,6 +539,7 @@ export function createInitialMatch(): GameState {
     postDrawPlay: false,
     pendingPrompt: null,
     lastPlay: null,
+    lastDraw: null,
     message: 'Welcome! Lowest score wins. First to exceed 108 loses.',
   };
   return dealRound(base);
@@ -514,7 +559,7 @@ export function startNextRound(state: GameState): GameState {
 }
 
 export function humanCanAct(state: GameState): boolean {
-  if (state.phase !== 'playing') {
+  if (state.phase !== 'playing' || state.lastDraw) {
     return false;
   }
   const humanIndex = state.players.findIndex((player) => player.isHuman);
@@ -565,31 +610,17 @@ export function acceptHumanAceSkip(state: GameState): GameState {
   return acceptAceSkip(state);
 }
 
-export function humanMustDraw(state: GameState): boolean {
-  if (!humanCanAct(state)) {
-    return false;
-  }
-  const human = state.players.find((player) => player.isHuman)!;
-  if (state.sevenChainTotal > 0) {
-    return !human.hand.some((card) => card.rank === '7');
-  }
-  return !hasPlayableCard(human.hand, getTopCard(state.discardPile));
-}
-
 export function humanCanDraw(state: GameState): boolean {
   if (!humanCanAct(state)) {
     return false;
   }
-  if (state.postDrawPlay) {
+  if (state.postDrawPlay || state.pendingPrompt) {
     return false;
   }
   if (isAceSkipChallenge(state)) {
     return false;
   }
-  if (state.sevenChainTotal > 0) {
-    return true;
-  }
-  return humanMustDraw(state);
+  return true;
 }
 
 export function humanCanPassAfterDraw(state: GameState): boolean {
@@ -612,7 +643,7 @@ export function humanCanDeclare(state: GameState): boolean {
     return false;
   }
   const humanIndex = state.players.findIndex((player) => player.isHuman);
-  if (humanIndex === -1 || state.currentPlayerIndex === humanIndex) {
+  if (humanIndex === -1) {
     return false;
   }
   const human = state.players[humanIndex];
@@ -625,11 +656,13 @@ export function declareOneLeft(state: GameState): GameState {
     return state;
   }
 
-  if (humanCanAct(state)) {
-    return { ...state, message: 'Declare after your turn ends.' };
+  const human = state.players[humanIndex];
+
+  if (human.declared) {
+    return { ...state, message: 'Already declared one left.' };
   }
 
-  if (!humanCanDeclare(state)) {
+  if (!needsDeclaration(human.hand)) {
     return { ...state, message: 'You do not need to declare yet.' };
   }
 
@@ -665,7 +698,7 @@ export function drawHumanCard(state: GameState): GameState {
     return state;
   }
 
-  return mustDraw(state, humanIndex);
+  return mustDraw(state, humanIndex, true);
 }
 
 export function completeSuitChoice(state: GameState, suit: Suit): GameState {
@@ -779,11 +812,11 @@ export function runAutomatedTurns(state: GameState): GameState {
     const player = next.players[next.currentPlayerIndex];
 
     if (player.isHuman) {
-      return beginHumanTurn({ ...next, lastPlay: null });
+      return beginHumanTurn(clearLastDraw(clearLastPlay(next)));
     }
 
     next = runSingleAutomatedTurn(next);
-    next = { ...next, lastPlay: null };
+    next = clearLastDraw(clearLastPlay(next));
 
     if (next.phase !== 'playing') {
       return next;

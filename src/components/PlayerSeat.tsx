@@ -69,6 +69,7 @@ export function PlayerSeat({
                 card={card}
                 selected={canSelect && selectedIds.includes(card.id)}
                 playable={canSelect && playableIds.has(card.id)}
+                hideCalledSuit={card.rank === 'Q'}
                 onPress={onCardPress ? () => onCardPress(card) : undefined}
               />
             </View>
