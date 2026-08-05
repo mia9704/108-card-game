@@ -14,20 +14,23 @@ export type TableCardMetrics = {
   overlap: number;
 };
 
-type SizeSpec = TableCardMetrics;
-
-const COMPACT: SizeSpec = {
-  width: 44,
-  height: 64,
-  padding: 4,
-  borderRadius: 8,
-  rankSize: 11,
-  suitSize: 14,
-  hintSize: 7,
-  calledSuitSize: 9,
-  backPatternSize: 10,
-  overlap: 36,
+export type TableLayout = {
+  cardMetrics: TableCardMetrics;
+  sideSeatWidth: number;
+  sidePlayerWidth: number;
+  pileGap: number;
+  sideInset: number;
+  isCompact: boolean;
 };
+
+export type ScreenLayout = {
+  width: number;
+  height: number;
+  sideInset: number;
+  pileGap: number;
+};
+
+type SizeSpec = TableCardMetrics;
 
 const STANDARD: SizeSpec = {
   width: 72,
@@ -72,20 +75,63 @@ function lerpSize(from: SizeSpec, to: SizeSpec, t: number): TableCardMetrics {
   };
 }
 
+function getCompactLayout(): TableLayout {
+  return {
+    cardMetrics: STANDARD,
+    sideSeatWidth: 32,
+    sidePlayerWidth: 36,
+    pileGap: 8,
+    sideInset: 0.025,
+    isCompact: true,
+  };
+}
+
 export function getTableCardMetrics(screenWidth: number): TableCardMetrics {
-  if (screenWidth <= 480) {
-    return COMPACT;
-  }
   if (screenWidth >= 1280) {
     return LARGE;
   }
-  if (screenWidth <= 768) {
-    return lerpSize(COMPACT, STANDARD, (screenWidth - 480) / (768 - 480));
+  if (screenWidth >= 768) {
+    return lerpSize(STANDARD, LARGE, (screenWidth - 768) / (1280 - 768));
   }
-  return lerpSize(STANDARD, LARGE, (screenWidth - 768) / (1280 - 768));
+  return STANDARD;
+}
+
+export function getTableLayout(screenWidth: number, _screenHeight: number): TableLayout {
+  if (screenWidth < 768) {
+    return getCompactLayout();
+  }
+
+  return {
+    cardMetrics: getTableCardMetrics(screenWidth),
+    sideSeatWidth: 92,
+    sidePlayerWidth: 56,
+    pileGap: 24,
+    sideInset: 0.13,
+    isCompact: false,
+  };
+}
+
+export function toScreenLayout(layout: TableLayout, screenWidth: number, screenHeight: number): ScreenLayout {
+  return {
+    width: screenWidth,
+    height: screenHeight,
+    sideInset: layout.sideInset,
+    pileGap: layout.pileGap,
+  };
+}
+
+export function useTableLayout(): TableLayout & ScreenLayout {
+  const { width, height } = useWindowDimensions();
+  return useMemo(() => {
+    const layout = getTableLayout(width, height);
+    return {
+      ...layout,
+      ...toScreenLayout(layout, width, height),
+    };
+  }, [width, height]);
 }
 
 export function useTableCardMetrics(): TableCardMetrics {
-  const { width } = useWindowDimensions();
-  return useMemo(() => getTableCardMetrics(width), [width]);
+  const { cardMetrics } = useTableLayout();
+  return cardMetrics;
 }

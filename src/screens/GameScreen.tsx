@@ -16,7 +16,7 @@ import { TablePlayStack } from '../components/TablePlayStack';
 import { RoundScoresOverlay } from '../components/RoundScoresOverlay';
 import { RulesHelpOverlay } from '../components/RulesHelpOverlay';
 import { isSameRankStack, sevenChainPenaltyDrawCount } from '../game/rules';
-import { useTableCardMetrics } from '../utils/tableCardSize';
+import { useTableLayout } from '../utils/tableCardSize';
 import {
   acceptHumanAceSkip,
   clearLastDraw,
@@ -55,7 +55,8 @@ export function GameScreen() {
   const drawPilePulse = useRef(new Animated.Value(1)).current;
 
   const human = game.players[0];
-  const tableCardMetrics = useTableCardMetrics();
+  const tableLayout = useTableLayout();
+  const tableCardMetrics = tableLayout.cardMetrics;
   const topCard = game.discardPile[game.discardPile.length - 1];
   const playableStacks = useMemo(() => getHumanPlayableStacks(game), [game]);
   const playableIds = new Set(playableStacks.flatMap((stack) => stack.map((card) => card.id)));
@@ -289,35 +290,40 @@ export function GameScreen() {
         </View>
       </View>
 
-      <View style={styles.tableArea}>
-        <View style={styles.topSeat}>
+      <View style={[styles.tableArea, tableLayout.isCompact && styles.tableAreaCompact]}>
+        <View style={[styles.topSeat, tableLayout.isCompact && styles.topSeatCompact]}>
           <PlayerSeat
             player={getPlayerAtSeat('top')}
             seat="top"
             isActive={game.currentPlayerIndex === 2}
             score={getScoreForPlayer(getPlayerAtSeat('top').id)}
+            compact={tableLayout.isCompact}
           />
         </View>
 
         <View style={styles.middleRow}>
-          <View style={styles.sideSeat}>
+          <View style={[styles.sideSeat, { width: tableLayout.sideSeatWidth }]}>
             <PlayerSeat
               player={getPlayerAtSeat('left')}
               seat="left"
               isActive={game.currentPlayerIndex === 1}
               score={getScoreForPlayer(getPlayerAtSeat('left').id)}
+              compact={tableLayout.isCompact}
+              sideWidth={tableLayout.sidePlayerWidth}
             />
           </View>
 
           <View style={styles.center}>
-            <View style={styles.pileRow}>
+            <View style={[styles.pileRow, { gap: tableLayout.pileGap }]}>
               <Animated.View style={{ transform: [{ scale: discardPulse }] }}>
                 <TablePlayStack cards={tablePlay} />
               </Animated.View>
               <Animated.View style={{ transform: [{ scale: drawPilePulse }] }}>
                 <View style={styles.drawPile}>
                   <PlayingCard card={topCard} faceDown tableMetrics={tableCardMetrics} />
-                  <Text style={styles.drawCount}>{game.drawPile.length}</Text>
+                  <View style={styles.drawCountBadge}>
+                    <Text style={styles.drawCount}>{game.drawPile.length}</Text>
+                  </View>
                 </View>
               </Animated.View>
             </View>
@@ -337,12 +343,14 @@ export function GameScreen() {
             <Text style={styles.message}>{game.message}</Text>
           </View>
 
-          <View style={styles.sideSeat}>
+          <View style={[styles.sideSeat, { width: tableLayout.sideSeatWidth }]}>
             <PlayerSeat
               player={getPlayerAtSeat('right')}
               seat="right"
               isActive={game.currentPlayerIndex === 3}
               score={getScoreForPlayer(getPlayerAtSeat('right').id)}
+              compact={tableLayout.isCompact}
+              sideWidth={tableLayout.sidePlayerWidth}
             />
           </View>
         </View>
@@ -495,10 +503,16 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 4,
   },
+  tableAreaCompact: {
+    paddingHorizontal: 0,
+  },
   topSeat: {
     alignItems: 'center',
     paddingTop: 6,
     overflow: 'visible',
+  },
+  topSeatCompact: {
+    paddingTop: 2,
   },
   middleRow: {
     flex: 1,
@@ -506,7 +520,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sideSeat: {
-    width: 92,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -514,20 +527,32 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
   },
   pileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 24,
   },
   drawPile: {
+    position: 'relative',
+  },
+  drawCountBadge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    minWidth: 22,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: 'rgba(18, 72, 50, 0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(247, 243, 232, 0.35)',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   drawCount: {
-    color: '#e8f5ef',
-    marginTop: 4,
-    fontWeight: '600',
+    color: '#f7f3e8',
+    fontWeight: '700',
     fontSize: 12,
   },
   chainText: {

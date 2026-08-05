@@ -4,7 +4,7 @@ import { PlayingCard } from './PlayingCard';
 import { getDiscardAnchor, getSeatAnchor } from './seatAnchors';
 import { Card, SeatPosition } from '../game/types';
 import { cardShadow } from '../utils/shadows';
-import { TableCardMetrics, useTableCardMetrics } from '../utils/tableCardSize';
+import { TableCardMetrics, useTableLayout } from '../utils/tableCardSize';
 
 const HUMAN_DURATION = 720;
 const HUMAN_STAGGER = 180;
@@ -26,6 +26,7 @@ function FlyingCard({
   duration,
   stagger,
   metrics,
+  screenLayout,
   onDone,
 }: {
   card: Card;
@@ -35,11 +36,12 @@ function FlyingCard({
   duration: number;
   stagger: number;
   metrics: TableCardMetrics;
+  screenLayout: ReturnType<typeof useTableLayout>;
   onDone: () => void;
 }) {
   const progress = useRef(new Animated.Value(0)).current;
-  const start = getSeatAnchor(seat);
-  const end = getDiscardAnchor();
+  const start = getSeatAnchor(seat, screenLayout);
+  const end = getDiscardAnchor(screenLayout);
   const cardWidth = metrics.width;
   const cardHeight = metrics.height;
   const spread = (index - (total - 1) / 2) * metrics.width * 0.5;
@@ -100,7 +102,7 @@ function FlyingCard({
 
 export function CardPlayAnimation({ cards, seat, slow = false, onComplete }: CardPlayAnimationProps) {
   const completed = useRef(0);
-  const metrics = useTableCardMetrics();
+  const tableLayout = useTableLayout();
   const duration = slow ? CPU_DURATION : HUMAN_DURATION;
   const stagger = slow ? CPU_STAGGER : HUMAN_STAGGER;
 
@@ -122,7 +124,8 @@ export function CardPlayAnimation({ cards, seat, slow = false, onComplete }: Car
           total={cards.length}
           duration={duration}
           stagger={stagger}
-          metrics={metrics}
+          metrics={tableLayout.cardMetrics}
+          screenLayout={tableLayout}
           onDone={handleCardDone}
         />
       ))}

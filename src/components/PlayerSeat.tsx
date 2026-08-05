@@ -10,11 +10,14 @@ type PlayerSeatProps = {
   selectedIds?: string[];
   playableIds?: Set<string>;
   canSelect?: boolean;
+  compact?: boolean;
+  sideWidth?: number;
   onCardPress?: (card: Card) => void;
 };
 
-function FaceDownFan({ cards, seat }: { cards: Card[]; seat: SeatPosition }) {
+function FaceDownFan({ cards, seat, compact }: { cards: Card[]; seat: SeatPosition; compact?: boolean }) {
   const isSideSeat = seat === 'left' || seat === 'right';
+  const overlap = compact ? 46 : 50;
 
   return (
     <View style={[styles.fan, isSideSeat && styles.fanVertical]}>
@@ -24,8 +27,8 @@ function FaceDownFan({ cards, seat }: { cards: Card[]; seat: SeatPosition }) {
           style={[
             styles.fanCard,
             isSideSeat
-              ? { marginTop: index === 0 ? 0 : -50 }
-              : { marginLeft: index === 0 ? 0 : -28 },
+              ? { marginTop: index === 0 ? 0 : -overlap }
+              : { marginLeft: index === 0 ? 0 : compact ? -24 : -28 },
           ]}
         >
           <PlayingCard card={card} faceDown compact />
@@ -43,15 +46,27 @@ export function PlayerSeat({
   selectedIds = [],
   playableIds = new Set(),
   canSelect = false,
+  compact = false,
+  sideWidth,
   onCardPress,
 }: PlayerSeatProps) {
   const isHuman = seat === 'bottom';
+  const isSideSeat = seat === 'left' || seat === 'right';
 
   return (
-    <View style={[styles.seat, styles[`seat_${seat}`], isActive && styles.seatActive]}>
-      <View style={[styles.labelRow, seat === 'top' && styles.labelRowTop]}>
-        <Text style={styles.name}>{player.name}</Text>
-        <Text style={styles.meta}>
+    <View
+      style={[
+        styles.seat,
+        styles[`seat_${seat}`],
+        compact && seat === 'top' && styles.seat_topCompact,
+        isSideSeat && sideWidth ? { width: sideWidth } : null,
+        isSideSeat && compact && styles.seat_sideCompact,
+        isActive && styles.seatActive,
+      ]}
+    >
+      <View style={[styles.labelRow, seat === 'top' && styles.labelRowTop, compact && styles.labelRowCompact]}>
+        <Text style={[styles.name, compact && styles.nameCompact]}>{player.name}</Text>
+        <Text style={[styles.meta, compact && styles.metaCompact]}>
           {player.hand.length} cards{score !== undefined ? ` · ${score} pts` : ''}
         </Text>
         {player.declared ? <Text style={styles.declared}>1 left!</Text> : null}
@@ -78,7 +93,7 @@ export function PlayerSeat({
           ))}
         </ScrollView>
       ) : (
-        <FaceDownFan cards={player.hand} seat={seat} />
+        <FaceDownFan cards={player.hand} seat={seat} compact={compact} />
       )}
     </View>
   );
@@ -104,6 +119,11 @@ const styles = StyleSheet.create({
     minHeight: 96,
     paddingTop: 4,
   },
+  seat_topCompact: {
+    minHeight: 72,
+    paddingTop: 0,
+    paddingHorizontal: 2,
+  },
   seat_left: {
     width: 56,
     minHeight: 160,
@@ -111,6 +131,10 @@ const styles = StyleSheet.create({
   seat_right: {
     width: 56,
     minHeight: 160,
+  },
+  seat_sideCompact: {
+    minHeight: 120,
+    padding: 2,
   },
   seatActive: {
     borderColor: '#f5c542',
@@ -127,14 +151,24 @@ const styles = StyleSheet.create({
   labelRowTop: {
     marginBottom: 6,
   },
+  labelRowCompact: {
+    gap: 4,
+    marginBottom: 2,
+  },
   name: {
     color: '#f7f3e8',
     fontWeight: '700',
     fontSize: 12,
   },
+  nameCompact: {
+    fontSize: 10,
+  },
   meta: {
     color: '#a8d5c2',
     fontSize: 11,
+  },
+  metaCompact: {
+    fontSize: 9,
   },
   declared: {
     color: '#f5c542',

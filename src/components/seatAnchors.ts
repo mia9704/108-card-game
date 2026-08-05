@@ -1,25 +1,42 @@
 import { Dimensions } from 'react-native';
 import { SeatPosition } from '../game/types';
+import { ScreenLayout } from '../utils/tableCardSize';
 
 const { width, height } = Dimensions.get('window');
 
-export function getSeatAnchor(seat: SeatPosition): { x: number; y: number } {
+function resolveLayout(layout?: ScreenLayout) {
+  return {
+    width: layout?.width ?? width,
+    height: layout?.height ?? height,
+    sideInset: layout?.sideInset ?? (width < 768 ? 0.035 : 0.13),
+    pileGap: layout?.pileGap ?? (width < 768 ? 10 : 24),
+  };
+}
+
+export function getSeatAnchor(seat: SeatPosition, layout?: ScreenLayout): { x: number; y: number } {
+  const { width: w, height: h, sideInset } = resolveLayout(layout);
+
   switch (seat) {
     case 'bottom':
-      return { x: width * 0.5, y: height * 0.76 };
+      return { x: w * 0.5, y: h * 0.76 };
     case 'top':
-      return { x: width * 0.5, y: height * 0.24 };
+      return { x: w * 0.5, y: h * (layout && layout.width < 768 ? 0.22 : 0.24) };
     case 'left':
-      return { x: width * 0.13, y: height * 0.44 };
+      return { x: w * sideInset, y: h * 0.44 };
     case 'right':
-      return { x: width * 0.87, y: height * 0.44 };
+      return { x: w * (1 - sideInset), y: h * 0.44 };
   }
 }
 
-export function getDiscardAnchor(): { x: number; y: number } {
-  return { x: width * 0.5, y: height * 0.44 };
+export function getDiscardAnchor(layout?: ScreenLayout): { x: number; y: number } {
+  const { width: w, height: h } = resolveLayout(layout);
+  return { x: w * 0.5, y: h * 0.44 };
 }
 
-export function getDrawPileAnchor(cardWidth = 72): { x: number; y: number } {
-  return { x: width * 0.5 + cardWidth * 0.85 + 24, y: height * 0.44 };
+export function getDrawPileAnchor(
+  cardWidth = 72,
+  layout?: ScreenLayout,
+): { x: number; y: number } {
+  const { width: w, height: h, pileGap } = resolveLayout(layout);
+  return { x: w * 0.5 + cardWidth * 0.85 + pileGap, y: h * 0.44 };
 }
