@@ -25,7 +25,7 @@ npm start
 
 | Rank | Points | Special |
 |------|--------|---------|
-| 7 | 0 | 7-chain: play 7s or draw 7×(total 7s played) |
+| 7 | 0 | 7-chain: play 7s or draw 3×(total 7s played) |
 | 8 | 8 | — |
 | 9 | 9 | — |
 | 10 | 10 | — |

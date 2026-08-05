@@ -17,7 +17,7 @@ const SECTIONS = [
     body: [
       'Match the top card by rank or suit.',
       'Play several cards at once if they are all the same rank.',
-      'Queens are wild — play them on any card, then choose a suit. The called suit is shown under the Queen on the table.',
+      'Queens are wild — play them on any card, then choose a suit (unless you go out on that play). The called suit is shown under the Queen on the table.',
       'On your turn you may draw from the deck even if you have a playable card.',
       'After drawing, you may play a card or pass.',
     ],
@@ -34,7 +34,7 @@ const SECTIONS = [
   {
     title: 'Special cards',
     body: [
-      '7 — Start a 7-chain. Each seven played adds to the chain. The next player must play 7s or draw 7 × (total sevens in the chain). After a penalty draw, they may still play or pass.',
+      '7 — Start a 7-chain. Each seven played adds to the chain. The next player must play 7s or draw 3 cards from the pile for each seven in the chain (e.g. two 7s → draw 6). After a penalty draw, they may still play or pass.',
       'Ace — Playing N aces skips the next N players. Each skipped player may play aces (resetting the skip count to however many they played) or accept the skip.',
       'Queen — Going out with a Queen costs you 30 points per Queen in that final play (bonus for the round winner).',
     ],

@@ -8,6 +8,7 @@ import {
   isSameRankStack,
   needsDeclaration,
   requiresSuitChoice,
+  sevenChainPenaltyDrawCount,
   sortHand,
 } from './rules';
 import {
@@ -286,9 +287,11 @@ function finalizePlay(
 ): GameState {
   const player = state.players[playerIndex];
   const playedIds = new Set(playedCards.map((card) => card.id));
+  const remainingHand = player.hand.filter((card) => !playedIds.has(card.id));
+  const isGoingOut = remainingHand.length === 0;
   let cardsToDiscard = playedCards;
 
-  if (requiresSuitChoice(playedCards[0].rank)) {
+  if (requiresSuitChoice(playedCards[0].rank) && !isGoingOut) {
     if (!chosenSuit) {
       return {
         ...state,
@@ -302,8 +305,6 @@ function finalizePlay(
     }
     cardsToDiscard = playedCards.map((card) => ({ ...card, calledSuit: chosenSuit }));
   }
-
-  const remainingHand = player.hand.filter((card) => !playedIds.has(card.id));
 
   const players = state.players.map((p, index) => {
     if (index !== playerIndex) {
@@ -448,7 +449,7 @@ function withDeclareReminder(state: GameState, playedByIndex: number): GameState
 }
 
 function drawSevenPenalty(state: GameState, playerIndex: number): GameState {
-  const drawCount = 7 * state.sevenChainTotal;
+  const drawCount = sevenChainPenaltyDrawCount(state.sevenChainTotal);
   const player = state.players[playerIndex];
   let next = drawCards(state, playerIndex, drawCount, {
     postDrawPlay: true,

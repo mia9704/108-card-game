@@ -1,5 +1,12 @@
 import { Card, Rank, Suit } from './types';
 
+/** Cards drawn for each seven in an active 7-chain when not defended with a 7. */
+export const SEVEN_CHAIN_DRAW_PER_SEVEN = 3;
+
+export function sevenChainPenaltyDrawCount(sevenChainTotal: number): number {
+  return sevenChainTotal * SEVEN_CHAIN_DRAW_PER_SEVEN;
+}
+
 export function getActiveSuit(card: Card): Suit {
   return card.calledSuit ?? card.suit;
 }

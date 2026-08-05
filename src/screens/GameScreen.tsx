@@ -15,7 +15,7 @@ import { PlayingCard, SuitPicker } from '../components/PlayingCard';
 import { TablePlayStack } from '../components/TablePlayStack';
 import { RoundScoresOverlay } from '../components/RoundScoresOverlay';
 import { RulesHelpOverlay } from '../components/RulesHelpOverlay';
-import { isSameRankStack } from '../game/rules';
+import { isSameRankStack, sevenChainPenaltyDrawCount } from '../game/rules';
 import { useTableCardMetrics } from '../utils/tableCardSize';
 import {
   acceptHumanAceSkip,
@@ -322,7 +322,8 @@ export function GameScreen() {
 
             {game.sevenChainTotal > 0 ? (
               <Text style={styles.chainText}>
-                7-chain: {game.sevenChainTotal} · penalty {7 * game.sevenChainTotal}
+                7-chain: {game.sevenChainTotal} · penalty{' '}
+                {sevenChainPenaltyDrawCount(game.sevenChainTotal)}
               </Text>
             ) : null}
             {game.aceSkipsRemaining > 0 ? (
@@ -378,7 +379,9 @@ export function GameScreen() {
             {canDraw ? (
               <Pressable style={styles.secondaryButton} onPress={handleDraw}>
                 <Text style={styles.secondaryButtonText}>
-                  {game.sevenChainTotal > 0 ? `Take ${7 * game.sevenChainTotal}` : 'Draw'}
+                  {game.sevenChainTotal > 0
+                    ? `Take ${sevenChainPenaltyDrawCount(game.sevenChainTotal)}`
+                    : 'Draw'}
                 </Text>
               </Pressable>
             ) : null}
