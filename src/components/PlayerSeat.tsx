@@ -41,12 +41,14 @@ function HumanHand({
   selectedIds,
   playableIds,
   canSelect,
+  isActive,
   onCardPress,
 }: {
   cards: Card[];
   selectedIds: string[];
   playableIds: Set<string>;
   canSelect: boolean;
+  isActive: boolean;
   onCardPress?: (card: Card) => void;
 }) {
   const scrollRef = useRef<ScrollView>(null);
@@ -94,7 +96,7 @@ function HumanHand({
   }, []);
 
   return (
-    <View style={styles.handScrollWrap}>
+    <View style={[styles.handScrollWrap, isActive ? styles.handActive : styles.handIdle]}>
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -167,12 +169,28 @@ type PlayerSeatProps = {
   onCardPress?: (card: Card) => void;
 };
 
-function FaceDownFan({ cards, seat, compact }: { cards: Card[]; seat: SeatPosition; compact?: boolean }) {
+function FaceDownFan({
+  cards,
+  seat,
+  compact,
+  isActive,
+}: {
+  cards: Card[];
+  seat: SeatPosition;
+  compact?: boolean;
+  isActive: boolean;
+}) {
   const isSideSeat = seat === 'left' || seat === 'right';
   const overlap = compact ? 46 : 50;
 
   return (
-    <View style={[styles.fan, isSideSeat && styles.fanVertical]}>
+    <View
+      style={[
+        styles.fan,
+        isSideSeat && styles.fanVertical,
+        isActive ? styles.handActive : styles.handIdle,
+      ]}
+    >
       {cards.map((card, index) => (
         <View
           key={card.id}
@@ -213,7 +231,6 @@ export function PlayerSeat({
         compact && seat === 'top' && styles.seat_topCompact,
         isSideSeat && sideWidth ? { width: sideWidth } : null,
         isSideSeat && compact && styles.seat_sideCompact,
-        isActive && styles.seatActive,
       ]}
     >
       <View style={[styles.labelRow, seat === 'top' && styles.labelRowTop, compact && styles.labelRowCompact]}>
@@ -222,7 +239,6 @@ export function PlayerSeat({
           {player.hand.length} cards{score !== undefined ? ` · ${score} pts` : ''}
         </Text>
         {player.declared ? <Text style={styles.declared}>1 left!</Text> : null}
-        {isActive ? <View style={styles.turnDot} /> : null}
       </View>
 
       {isHuman ? (
@@ -231,10 +247,11 @@ export function PlayerSeat({
           selectedIds={selectedIds}
           playableIds={playableIds}
           canSelect={canSelect}
+          isActive={isActive}
           onCardPress={onCardPress}
         />
       ) : (
-        <FaceDownFan cards={player.hand} seat={seat} compact={compact} />
+        <FaceDownFan cards={player.hand} seat={seat} compact={compact} isActive={isActive} />
       )}
     </View>
   );
@@ -245,9 +262,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 6,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: 'transparent',
     maxWidth: '100%',
     overflow: 'visible',
   },
@@ -277,9 +291,13 @@ const styles = StyleSheet.create({
     minHeight: 120,
     padding: 2,
   },
-  seatActive: {
-    borderColor: '#f5c542',
-    backgroundColor: 'rgba(245, 197, 66, 0.08)',
+  handActive: {
+    borderTopWidth: 2,
+    borderTopColor: '#f5c542',
+  },
+  handIdle: {
+    borderTopWidth: 2,
+    borderTopColor: 'transparent',
   },
   labelRow: {
     flexDirection: 'row',
@@ -316,12 +334,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
-  turnDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#f5c542',
-  },
   fan: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -347,7 +359,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     paddingHorizontal: 8,
-    paddingTop: 12,
+    paddingTop: 10,
     paddingBottom: 8,
   },
   scrollHint: {
