@@ -32,8 +32,9 @@ export function PlayingCard({
   const red = isRedSuit(card.suit);
   const hint = rankHint(card.rank);
   const calledRed = card.calledSuit ? isRedSuit(card.calledSuit) : false;
-  const tableCardStyle = tableMetrics ? getTableCardStyle(tableMetrics) : null;
-  const tableTextStyles = tableMetrics ? getTableTextStyles(tableMetrics) : null;
+  const metrics = tableMetrics;
+  const metricCardStyle = metrics ? getMetricCardStyle(metrics) : null;
+  const metricTextStyles = metrics ? getMetricTextStyles(metrics) : null;
 
   if (faceDown) {
     return (
@@ -41,11 +42,11 @@ export function PlayingCard({
         style={[
           styles.card,
           styles.cardBack,
-          compact && !tableMetrics && styles.cardCompact,
-          tableCardStyle,
+          compact && !metrics && styles.cardCompact,
+          metricCardStyle,
         ]}
       >
-        <Text style={[styles.backPattern, tableTextStyles?.backPattern]}>108</Text>
+        <Text style={[styles.backPattern, metricTextStyles?.backPattern]}>108</Text>
       </View>
     );
   }
@@ -54,19 +55,19 @@ export function PlayingCard({
     <View
       style={[
         styles.card,
-        compact && !tableMetrics && styles.cardCompact,
-        tableCardStyle,
+        compact && !metrics && styles.cardCompact,
+        metricCardStyle,
         selected && styles.cardSelected,
         playable && styles.cardPlayable,
       ]}
     >
-      <Text style={[styles.rank, tableTextStyles?.rank, red ? styles.red : styles.black]}>
+      <Text style={[styles.rank, metricTextStyles?.rank, red ? styles.red : styles.black]}>
         {rankLabel(card.rank)}
       </Text>
-      <Text style={[styles.suit, tableTextStyles?.suit, red ? styles.red : styles.black]}>
+      <Text style={[styles.suit, metricTextStyles?.suit, red ? styles.red : styles.black]}>
         {suitSymbol(card.suit)}
       </Text>
-      {hint && !hideHint ? <Text style={[styles.hint, tableTextStyles?.hint]}>{hint}</Text> : null}
+      {hint && !hideHint ? <Text style={[styles.hint, metricTextStyles?.hint]}>{hint}</Text> : null}
     </View>
   );
 
@@ -77,7 +78,7 @@ export function PlayingCard({
         <Text
           style={[
             styles.calledSuitNote,
-            tableTextStyles?.calledSuit,
+            metricTextStyles?.calledSuit,
             calledRed ? styles.red : styles.black,
           ]}
         >
@@ -103,7 +104,7 @@ export function PlayingCard({
   );
 }
 
-function getTableCardStyle(metrics: TableCardMetrics): ViewStyle {
+function getMetricCardStyle(metrics: TableCardMetrics): ViewStyle {
   return {
     width: metrics.width,
     height: metrics.height,
@@ -113,7 +114,7 @@ function getTableCardStyle(metrics: TableCardMetrics): ViewStyle {
   };
 }
 
-function getTableTextStyles(metrics: TableCardMetrics) {
+function getMetricTextStyles(metrics: TableCardMetrics) {
   return {
     rank: { fontSize: metrics.rankSize },
     suit: { fontSize: metrics.suitSize, marginTop: Math.max(2, Math.round(metrics.suitSize * 0.15)) },
