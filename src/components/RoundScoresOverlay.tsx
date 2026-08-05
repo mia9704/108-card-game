@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PlayingCard } from './PlayingCard';
+import { cardPoints } from '../game/scoring';
 import { GameState } from '../game/types';
 
 type RoundScoresOverlayProps = {
@@ -75,7 +76,9 @@ export function RoundScoresOverlay({ game, onContinue, continueLabel }: RoundSco
                         key={card.id}
                         card={card}
                         compact
-                        hideCalledSuit={card.rank === 'Q'}
+                        hideCalledSuit
+                        hideHint
+                        points={cardPoints(card)}
                       />
                     ))}
                   </View>

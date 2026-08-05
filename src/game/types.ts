@@ -36,6 +36,11 @@ export type LastDraw = {
   message?: string;
 };
 
+export type PendingRoundFinish = {
+  winnerId: string;
+  winningCards: Card[];
+};
+
 export type GameState = {
   players: Player[];
   currentPlayerIndex: number;
@@ -54,6 +59,7 @@ export type GameState = {
   pendingPrompt: PendingPrompt | null;
   lastPlay: LastPlay | null;
   lastDraw: LastDraw | null;
+  pendingRoundFinish: PendingRoundFinish | null;
   message: string;
 };
 

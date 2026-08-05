@@ -12,6 +12,8 @@ type PlayingCardProps = {
   compact?: boolean;
   tableMetrics?: TableCardMetrics;
   hideCalledSuit?: boolean;
+  hideHint?: boolean;
+  points?: number;
   onPress?: () => void;
 };
 
@@ -23,6 +25,8 @@ export function PlayingCard({
   compact = false,
   tableMetrics,
   hideCalledSuit = false,
+  hideHint = false,
+  points,
   onPress,
 }: PlayingCardProps) {
   const red = isRedSuit(card.suit);
@@ -62,7 +66,7 @@ export function PlayingCard({
       <Text style={[styles.suit, tableTextStyles?.suit, red ? styles.red : styles.black]}>
         {suitSymbol(card.suit)}
       </Text>
-      {hint ? <Text style={[styles.hint, tableTextStyles?.hint]}>{hint}</Text> : null}
+      {hint && !hideHint ? <Text style={[styles.hint, tableTextStyles?.hint]}>{hint}</Text> : null}
     </View>
   );
 
@@ -78,6 +82,11 @@ export function PlayingCard({
           ]}
         >
           Calls {suitSymbol(card.calledSuit)}
+        </Text>
+      ) : null}
+      {points !== undefined ? (
+        <Text style={[styles.pointsLabel, points === 0 && styles.pointsLabelZero]}>
+          {points > 0 ? `+${points}` : points}
         </Text>
       ) : null}
     </View>
@@ -220,6 +229,15 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
     overflow: 'hidden',
+  },
+  pointsLabel: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#c0392b',
+  },
+  pointsLabelZero: {
+    color: '#666',
   },
   red: {
     color: '#c0392b',

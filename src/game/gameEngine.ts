@@ -126,6 +126,11 @@ export function clearLastDraw(state: GameState): GameState {
     next = { ...next, message };
   }
 
+  if (next.pendingRoundFinish) {
+    const { winnerId, winningCards } = next.pendingRoundFinish;
+    return finishRound({ ...next, pendingRoundFinish: null }, winnerId, winningCards);
+  }
+
   return next;
 }
 
@@ -328,6 +333,23 @@ function finalizePlay(
       const penalized = applyDeclarePenalty(next, playerIndex, 'Cannot go out without declaring.');
       return withCurrentPlayer(penalized, playerIndex);
     }
+
+    const rank = playedCards[0].rank;
+    const count = playedCards.length;
+
+    if (rank === '7') {
+      const sevenChainTotal = next.sevenChainTotal + count;
+      const nextIndex = nextPlayerIndex(next, 1);
+      const penalizedPlayer = next.players[nextIndex];
+      const drawCount = sevenChainPenaltyDrawCount(sevenChainTotal);
+      return {
+        ...withCurrentPlayer(next, nextIndex),
+        sevenChainTotal,
+        pendingRoundFinish: { winnerId: player.id, winningCards: cardsToDiscard },
+        message: `${player.name} went out on 7(s)! ${penalizedPlayer.name} draws ${drawCount}.`,
+      };
+    }
+
     return finishRound(next, player.id, cardsToDiscard);
   }
 
@@ -451,9 +473,12 @@ function withDeclareReminder(state: GameState, playedByIndex: number): GameState
 function drawSevenPenalty(state: GameState, playerIndex: number): GameState {
   const drawCount = sevenChainPenaltyDrawCount(state.sevenChainTotal);
   const player = state.players[playerIndex];
+  const isRoundEndPenalty = Boolean(state.pendingRoundFinish);
   let next = drawCards(state, playerIndex, drawCount, {
-    postDrawPlay: true,
-    message: `${player.name} draws ${drawCount}. You may play cards or pass.`,
+    postDrawPlay: !isRoundEndPenalty,
+    message: isRoundEndPenalty
+      ? `${player.name} draws ${drawCount} before the round ends.`
+      : `${player.name} draws ${drawCount}. You may play cards or pass.`,
   });
   next = {
     ...next,
@@ -461,6 +486,13 @@ function drawSevenPenalty(state: GameState, playerIndex: number): GameState {
   };
 
   return withCurrentPlayer(next, playerIndex);
+}
+
+export function resolveRoundEndSevenPenalty(state: GameState): GameState {
+  if (!state.pendingRoundFinish || state.sevenChainTotal <= 0 || state.phase !== 'playing') {
+    return state;
+  }
+  return drawSevenPenalty(state, state.currentPlayerIndex);
 }
 
 function mustDraw(state: GameState, playerIndex: number, voluntary = false): GameState {
@@ -517,6 +549,7 @@ function dealRound(state: GameState): GameState {
     pendingPrompt: null,
     lastPlay: null,
     lastDraw: null,
+    pendingRoundFinish: null,
     message: 'New round! Match rank or suit. Stack same-rank cards.',
   };
 }
@@ -541,6 +574,7 @@ export function createInitialMatch(): GameState {
     pendingPrompt: null,
     lastPlay: null,
     lastDraw: null,
+    pendingRoundFinish: null,
     message: 'Welcome! Lowest score wins. First to exceed 108 loses.',
   };
   return dealRound(base);

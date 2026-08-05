@@ -14,16 +14,18 @@ type PlayerSeatProps = {
 };
 
 function FaceDownFan({ cards, seat }: { cards: Card[]; seat: SeatPosition }) {
-  const isVertical = seat === 'left' || seat === 'right';
+  const isSideSeat = seat === 'left' || seat === 'right';
 
   return (
-    <View style={[styles.fan, isVertical && styles.fanVertical, seat === 'left' && styles.fanLeft, seat === 'right' && styles.fanRight]}>
+    <View style={[styles.fan, isSideSeat && styles.fanVertical]}>
       {cards.map((card, index) => (
         <View
           key={card.id}
           style={[
             styles.fanCard,
-            isVertical ? { marginTop: index === 0 ? 0 : -48 } : { marginLeft: index === 0 ? 0 : -28 },
+            isSideSeat
+              ? { marginTop: index === 0 ? 0 : -50 }
+              : { marginLeft: index === 0 ? 0 : -28 },
           ]}
         >
           <PlayingCard card={card} faceDown compact />
@@ -103,11 +105,11 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   seat_left: {
-    width: 88,
+    width: 56,
     minHeight: 160,
   },
   seat_right: {
-    width: 88,
+    width: 56,
     minHeight: 160,
   },
   seatActive: {
@@ -152,12 +154,7 @@ const styles = StyleSheet.create({
   },
   fanVertical: {
     flexDirection: 'column',
-  },
-  fanLeft: {
-    transform: [{ rotate: '90deg' }],
-  },
-  fanRight: {
-    transform: [{ rotate: '-90deg' }],
+    alignItems: 'center',
   },
   fanCard: {
     overflow: 'visible',
