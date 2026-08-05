@@ -10,10 +10,12 @@ import {
 } from 'react-native';
 import { CardDrawAnimation } from '../components/CardDrawAnimation';
 import { CardPlayAnimation } from '../components/CardPlayAnimation';
+import { ConfirmOverlay } from '../components/ConfirmOverlay';
 import { PlayerSeat } from '../components/PlayerSeat';
 import { PlayingCard, SuitPicker } from '../components/PlayingCard';
 import { TablePlayStack } from '../components/TablePlayStack';
 import { RoundScoresOverlay } from '../components/RoundScoresOverlay';
+import { MatchEndOverlay } from '../components/MatchEndOverlay';
 import { RulesHelpOverlay } from '../components/RulesHelpOverlay';
 import { isSameRankStack, sevenChainPenaltyDrawCount } from '../game/rules';
 import { useTableLayout } from '../utils/tableCardSize';
@@ -50,6 +52,8 @@ export function GameScreen() {
   const [animatingDraw, setAnimatingDraw] = useState(false);
   const [tablePlay, setTablePlay] = useState<Card[]>([]);
   const [showHelp, setShowHelp] = useState(false);
+  const [showMatchEndPrompt, setShowMatchEndPrompt] = useState(false);
+  const [showNewGameConfirm, setShowNewGameConfirm] = useState(false);
   const automationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const discardPulse = useRef(new Animated.Value(1)).current;
   const drawPilePulse = useRef(new Animated.Value(1)).current;
@@ -76,7 +80,8 @@ export function GameScreen() {
     !animatingPlay &&
     !animatingDraw &&
     !lastPlay &&
-    !lastDraw;
+    !lastDraw &&
+    !showMatchEndPrompt;
 
   const pulseDiscard = useCallback(() => {
     discardPulse.setValue(1);
@@ -251,6 +256,14 @@ export function GameScreen() {
     setSelectedIds([]);
   }
 
+  function handleRoundScoresContinue() {
+    if (game.phase === 'matchOver') {
+      setShowMatchEndPrompt(true);
+      return;
+    }
+    handleNextRound();
+  }
+
   function handleNextRound() {
     const next = startNextRound(game);
     setGame(next);
@@ -260,11 +273,22 @@ export function GameScreen() {
   }
 
   function handleNewMatch() {
+    setShowMatchEndPrompt(false);
+    setShowNewGameConfirm(false);
     const next = resetMatch();
     setGame(next);
     setTablePlay(next.discardPile.slice(-1));
     setSelectedIds([]);
     setAnimatingPlay(false);
+    setAnimatingDraw(false);
+  }
+
+  function handleNewGamePress() {
+    if (game.phase === 'matchOver') {
+      handleNewMatch();
+      return;
+    }
+    setShowNewGameConfirm(true);
   }
 
   function getPlayerAtSeat(seat: SeatPosition) {
@@ -281,12 +305,19 @@ export function GameScreen() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View style={styles.headerText}>
-            <Text style={styles.title}>108 Card Game</Text>
-            <Text style={styles.subtitle}>Round {game.roundNumber} · 32-card deck · 5 each</Text>
+            <Text style={styles.title}>108 Mongolian Game</Text>
+            <Text style={styles.subtitle}>Round {game.roundNumber} </Text>
           </View>
-          <Pressable style={styles.helpButton} onPress={() => setShowHelp(true)}>
-            <Text style={styles.helpButtonText}>?</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable style={styles.newGameButton} onPress={handleNewGamePress}>
+              <Text style={styles.newGameButtonText} pointerEvents="none">
+                New Game
+              </Text>
+            </Pressable>
+            <Pressable style={styles.helpButton} onPress={() => setShowHelp(true)}>
+              <Text style={styles.helpButtonText}>?</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -445,8 +476,26 @@ export function GameScreen() {
       {showRoundScores ? (
         <RoundScoresOverlay
           game={game}
-          onContinue={game.phase === 'matchOver' ? handleNewMatch : handleNextRound}
-          continueLabel={game.phase === 'matchOver' ? 'New Match' : 'Next Round'}
+          onContinue={handleRoundScoresContinue}
+          continueLabel={game.phase === 'matchOver' ? 'Continue' : 'Next Round'}
+        />
+      ) : null}
+
+      {showMatchEndPrompt && game.phase === 'matchOver' ? (
+        <MatchEndOverlay
+          game={game}
+          onNewGame={handleNewMatch}
+          onDismiss={() => setShowMatchEndPrompt(false)}
+        />
+      ) : null}
+
+      {showNewGameConfirm ? (
+        <ConfirmOverlay
+          title="New Game"
+          message="Start a new game? Current progress will be lost."
+          confirmLabel="New Game"
+          onConfirm={handleNewMatch}
+          onCancel={() => setShowNewGameConfirm(false)}
         />
       ) : null}
 
@@ -473,6 +522,25 @@ const styles = StyleSheet.create({
   headerText: {
     flex: 1,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 12,
+  },
+  newGameButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    backgroundColor: 'rgba(247, 243, 232, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(247, 243, 232, 0.35)',
+  },
+  newGameButtonText: {
+    color: '#f7f3e8',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   helpButton: {
     width: 36,
     height: 36,
@@ -482,7 +550,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(247, 243, 232, 0.35)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 12,
   },
   helpButtonText: {
     color: '#f7f3e8',
