@@ -18,9 +18,10 @@ import {
   isMatchOver,
 } from './scoring';
 import { Card, GameState, PendingPrompt, Player, Rank, Suit } from './types';
+import { m } from './messages';
 
 const STARTING_HAND_SIZE = 5;
-const PLAYER_NAMES = ['You', 'Sara', 'Bill', 'Mishelle'];
+const PLAYER_NAMES = ['You', 'Sara', 'Mishelle', 'Bill'];
 
 function createPlayers(): Player[] {
   return PLAYER_NAMES.map((name, index) => ({
@@ -46,7 +47,7 @@ function reshuffleDrawPile(state: GameState): GameState {
     ...state,
     drawPile: rest,
     discardPile: [top],
-    message: 'Draw pile reshuffled.',
+    message: m('msg.drawPileReshuffled'),
   };
 }
 
@@ -86,7 +87,7 @@ function addCardsToHand(state: GameState, playerIndex: number, cards: Card[]): G
 
 type DrawOptions = {
   postDrawPlay?: boolean;
-  message?: string;
+  message?: GameState['message'];
 };
 
 function drawCards(
@@ -150,10 +151,14 @@ function resetDeclaredIfNeeded(player: Player, hand: Card[]): Player {
   return player;
 }
 
-function applyDeclarePenalty(state: GameState, playerIndex: number, reason: string): GameState {
+function applyDeclarePenalty(
+  state: GameState,
+  playerIndex: number,
+  reasonKey: 'declareReason.forgotBeforeTurn' | 'declareReason.cannotGoOutWithoutDeclaring',
+): GameState {
   const player = state.players[playerIndex];
   return drawCards(state, playerIndex, 1, {
-    message: `${player.name} forgot to declare and draws 1. ${reason}`,
+    message: m('msg.forgotDeclareDraw', { name: player.name, reasonKey }),
   });
 }
 
@@ -179,10 +184,6 @@ function finishRound(
   }
 
   const winner = state.players.find((player) => player.id === winnerId)!;
-  let message = `${winner.name} wins round ${state.roundNumber}!`;
-  if (queenCount > 0) {
-    message += ` Queen bonus: -${30 * queenCount} points.`;
-  }
 
   if (isMatchOver(scores)) {
     const matchWinnerId = getLowestScorePlayerId(
@@ -201,7 +202,13 @@ function finishRound(
       aceSkipsRemaining: 0,
       postDrawPlay: false,
       pendingPrompt: null,
-      message: `${message} ${matchWinner.name} ${matchWinner.name === "You" ? "win" : "wins"} the match!`,
+      message: m('msg.roundWin', {
+        name: winner.name,
+        round: state.roundNumber,
+        queenCount,
+        matchWinner: matchWinner.name,
+        matchWinnerIsYou: matchWinner.name === 'You',
+      }),
     };
   }
 
@@ -215,7 +222,11 @@ function finishRound(
     aceSkipsRemaining: 0,
     postDrawPlay: false,
     pendingPrompt: null,
-    message,
+    message: m('msg.roundWin', {
+      name: winner.name,
+      round: state.roundNumber,
+      queenCount,
+    }),
   };
 }
 
@@ -251,14 +262,14 @@ function prepareHumanTurn(state: GameState): GameState {
 
   const human = state.players[humanIndex];
   if (needsDeclaration(human.hand) && !human.declared) {
-    return applyDeclarePenalty(state, humanIndex, 'Forgot to declare before your turn.');
+    return applyDeclarePenalty(state, humanIndex, 'declareReason.forgotBeforeTurn');
   }
 
   if (isAceSkipChallenge(state)) {
-    return { ...state, message: 'Play Ace(s) or accept the skip!' };
+    return { ...state, message: m('msg.playAcesOrAcceptSkipExclaim') };
   }
 
-  return { ...state, message: 'Your turn' };
+  return { ...state, message: m('msg.yourTurn') };
 }
 
 function acceptAceSkip(state: GameState): GameState {
@@ -273,8 +284,8 @@ function acceptAceSkip(state: GameState): GameState {
     aceSkipsRemaining: remaining,
     message:
       remaining > 0
-        ? `${player.name} was skipped. ${remaining} skip(s) remaining.`
-        : `${player.name} was skipped.`,
+        ? m('msg.playerSkippedRemaining', { name: player.name, remaining })
+        : m('msg.playerSkipped', { name: player.name }),
   };
 
   return prepareHumanTurn(next);
@@ -305,7 +316,7 @@ function finalizePlay(
           playerIndex,
           cardIds: playedCards.map((card) => card.id),
         },
-        message: `${player.name} must choose a suit for Queen.`,
+        message: m('msg.mustChooseSuitForQueen', { name: player.name }),
       };
     }
     cardsToDiscard = playedCards.map((card) => ({ ...card, calledSuit: chosenSuit }));
@@ -325,12 +336,16 @@ function finalizePlay(
     pendingPrompt: null,
     postDrawPlay: false,
     lastPlay: { playerIndex, cards: cardsToDiscard },
-    message: `${player.name} played ${playedCards.length} ${playedCards[0].rank}(s).`,
+    message: m('msg.playedCards', {
+      name: player.name,
+      count: playedCards.length,
+      rank: playedCards[0].rank,
+    }),
   };
 
   if (remainingHand.length === 0) {
     if (needsDeclaration(player.hand) && !player.declared) {
-      const penalized = applyDeclarePenalty(next, playerIndex, 'Cannot go out without declaring.');
+      const penalized = applyDeclarePenalty(next, playerIndex, 'declareReason.cannotGoOutWithoutDeclaring');
       return withCurrentPlayer(penalized, playerIndex);
     }
 
@@ -346,7 +361,11 @@ function finalizePlay(
         ...withCurrentPlayer(next, nextIndex),
         sevenChainTotal,
         pendingRoundFinish: { winnerId: player.id, winningCards: cardsToDiscard },
-        message: `${player.name} went out on 7(s)! ${penalizedPlayer.name} draws ${drawCount}.`,
+        message: m('msg.wentOutOnSevens', {
+          name: player.name,
+          penalizedName: penalizedPlayer.name,
+          drawCount,
+        }),
       };
     }
 
@@ -357,7 +376,7 @@ function finalizePlay(
     const declaredPlayers = next.players.map((p, index) =>
       index === playerIndex ? { ...p, declared: true } : p,
     );
-    next = { ...next, players: declaredPlayers, message: `${player.name} declares one card left.` };
+    next = { ...next, players: declaredPlayers, message: m('msg.declaresOneLeft', { name: player.name }) };
   }
 
   const rank = playedCards[0].rank;
@@ -370,7 +389,11 @@ function finalizePlay(
       {
         ...withCurrentPlayer(next, nextIndex),
         sevenChainTotal,
-        message: `${player.name} played ${count} seven(s). Chain total: ${sevenChainTotal}.`,
+        message: m('msg.playedSevens', {
+          name: player.name,
+          count,
+          chainTotal: sevenChainTotal,
+        }),
       },
       playerIndex,
     );
@@ -382,7 +405,7 @@ function finalizePlay(
       {
         ...withCurrentPlayer(next, nextIndex),
         aceSkipsRemaining: count,
-        message: `${player.name} played ${count} ace(s). Skip next ${count} player(s).`,
+        message: m('msg.playedAces', { name: player.name, count }),
       },
       playerIndex,
     );
@@ -424,14 +447,14 @@ function playCards(
 
   if (state.sevenChainTotal > 0) {
     if (rank !== '7' || !canPlayStack(cards, topCard)) {
-      return { ...state, message: 'You must play 7s or draw the penalty.' };
+      return { ...state, message: m('msg.mustPlaySevensOrDraw') };
     }
   } else if (isAceSkipChallenge(state)) {
     if (rank !== 'A' || !isSameRankStack(cards)) {
-      return { ...state, message: 'Play Ace(s) or accept the skip.' };
+      return { ...state, message: m('msg.playAcesOrAcceptSkip') };
     }
   } else if (!canPlayStack(cards, topCard)) {
-    return { ...state, message: 'Those cards cannot be played.' };
+    return { ...state, message: m('msg.cardsCannotBePlayed') };
   }
 
   return finalizePlay(state, playerIndex, cards, chosenSuit);
@@ -452,7 +475,7 @@ function endTurn(state: GameState): GameState {
     needsDeclaration(endingPlayer.hand) &&
     !endingPlayer.declared
   ) {
-    next = { ...next, message: 'Declare before your next turn!' };
+    next = { ...next, message: m('msg.declareBeforeNextTurn') };
   }
 
   return next;
@@ -465,7 +488,7 @@ function beginHumanTurn(state: GameState): GameState {
 function withDeclareReminder(state: GameState, playedByIndex: number): GameState {
   const player = state.players[playedByIndex];
   if (player.isHuman && needsDeclaration(player.hand) && !player.declared) {
-    return { ...state, message: 'Declare before your next turn!' };
+    return { ...state, message: m('msg.declareBeforeNextTurn') };
   }
   return state;
 }
@@ -477,8 +500,8 @@ function drawSevenPenalty(state: GameState, playerIndex: number): GameState {
   let next = drawCards(state, playerIndex, drawCount, {
     postDrawPlay: !isRoundEndPenalty,
     message: isRoundEndPenalty
-      ? `${player.name} draws ${drawCount} before the round ends.`
-      : `${player.name} draws ${drawCount}. You may play cards or pass.`,
+      ? m('msg.drawsBeforeRoundEnds', { name: player.name, drawCount })
+      : m('msg.drawsWithPlayOption', { name: player.name, drawCount }),
   });
   next = {
     ...next,
@@ -507,13 +530,13 @@ function mustDraw(state: GameState, playerIndex: number, voluntary = false): Gam
     return withCurrentPlayer(
       drawCards(state, playerIndex, 1, {
         postDrawPlay: true,
-        message: `${player.name} draws 1. You may play a card or pass.`,
+        message: m('msg.drawsOneWithPass', { name: player.name }),
       }),
       playerIndex,
     );
   }
 
-  return { ...state, message: 'You still have a playable card.' };
+  return { ...state, message: m('msg.stillHavePlayableCard') };
 }
 
 function findFirstDiscard(deck: Card[]): { top: Card; rest: Card[] } {
@@ -550,7 +573,7 @@ function dealRound(state: GameState): GameState {
     lastPlay: null,
     lastDraw: null,
     pendingRoundFinish: null,
-    message: 'New round! Match rank or suit. Stack same-rank cards.',
+    message: m('msg.newRound'),
   };
 }
 
@@ -575,7 +598,7 @@ export function createInitialMatch(): GameState {
     lastPlay: null,
     lastDraw: null,
     pendingRoundFinish: null,
-    message: 'Welcome! Lowest score wins. First to exceed 108 loses.',
+    message: m('msg.welcome'),
   };
   return dealRound(base);
 }
@@ -640,7 +663,7 @@ export function acceptHumanAceSkip(state: GameState): GameState {
     return state;
   }
   if (!isAceSkipChallenge(state)) {
-    return { ...state, message: 'No ace skip to accept.' };
+    return { ...state, message: m('msg.noAceSkipToAccept') };
   }
   return acceptAceSkip(state);
 }
@@ -668,7 +691,7 @@ export function passHumanTurn(state: GameState): GameState {
     return state;
   }
   if (!state.postDrawPlay) {
-    return { ...state, message: 'Nothing to pass.' };
+    return { ...state, message: m('msg.nothingToPass') };
   }
   return endTurn(state);
 }
@@ -694,11 +717,11 @@ export function declareOneLeft(state: GameState): GameState {
   const human = state.players[humanIndex];
 
   if (human.declared) {
-    return { ...state, message: 'Already declared one left.' };
+    return { ...state, message: m('msg.alreadyDeclared') };
   }
 
   if (!needsDeclaration(human.hand)) {
-    return { ...state, message: 'You do not need to declare yet.' };
+    return { ...state, message: m('msg.doNotNeedToDeclare') };
   }
 
   const players = state.players.map((player, index) =>
@@ -708,7 +731,7 @@ export function declareOneLeft(state: GameState): GameState {
   return {
     ...state,
     players,
-    message: 'Declared: one card left!',
+    message: m('msg.declaredOneLeft'),
   };
 }
 
@@ -796,7 +819,7 @@ function autoDeclare(state: GameState, playerIndex: number): GameState {
   return {
     ...state,
     players,
-    message: `${player.name} declares one card left.`,
+    message: m('msg.declaresOneLeft', { name: player.name }),
   };
 }
 

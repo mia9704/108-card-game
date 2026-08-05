@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from '../i18n/LanguageContext';
 import { GameState } from '../game/types';
 
 type MatchEndOverlayProps = {
@@ -8,6 +9,7 @@ type MatchEndOverlayProps = {
 };
 
 export function MatchEndOverlay({ game, onNewGame, onDismiss }: MatchEndOverlayProps) {
+  const { t, playerName } = useTranslation();
   const matchWinner = game.players.find((player) => player.id === game.matchWinnerId);
   const standings = [...game.players].sort(
     (a, b) => (game.scores[a.id] ?? 0) - (game.scores[b.id] ?? 0),
@@ -16,42 +18,44 @@ export function MatchEndOverlay({ game, onNewGame, onDismiss }: MatchEndOverlayP
   return (
     <View style={styles.overlay}>
       <View style={styles.panel}>
-        <Text style={styles.kicker}>Game Over</Text>
+        <Text style={styles.kicker}>{t('ui.gameOver')}</Text>
         {matchWinner ? (
           <Text style={styles.winner}>
-            {matchWinner.name} {matchWinner.name === 'You' ? 'win' : 'wins'} the match!
+            {matchWinner.name === 'You'
+              ? t('ui.winMatch')
+              : t('ui.winsMatch', { name: playerName(matchWinner.name) })}
           </Text>
         ) : null}
 
         <View style={styles.standings}>
-          <Text style={styles.standingsTitle}>Final Standings</Text>
+          <Text style={styles.standingsTitle}>{t('ui.finalStandings')}</Text>
           {standings.map((player, index) => {
             const isWinner = player.id === game.matchWinnerId;
             return (
               <View key={player.id} style={[styles.standingRow, isWinner && styles.standingRowWinner]}>
                 <Text style={[styles.place, isWinner && styles.placeWinner]}>{index + 1}.</Text>
                 <Text style={[styles.playerName, isWinner && styles.playerNameWinner]}>
-                  {player.name}
+                  {playerName(player.name)}
                   {isWinner ? ' ★' : ''}
                 </Text>
                 <Text style={[styles.score, isWinner && styles.scoreWinner]}>
-                  {game.scores[player.id] ?? 0} pts
+                  {t('ui.pts', { score: game.scores[player.id] ?? 0 })}
                 </Text>
               </View>
             );
           })}
         </View>
 
-        <Text style={styles.prompt}>Would you like to start a new game?</Text>
+        <Text style={styles.prompt}>{t('ui.promptNewGame')}</Text>
 
         <Pressable style={styles.primaryButton} onPress={onNewGame}>
           <Text style={styles.primaryButtonText} pointerEvents="none">
-            New Game
+            {t('ui.newGame')}
           </Text>
         </Pressable>
         <Pressable style={styles.secondaryButton} onPress={onDismiss}>
           <Text style={styles.secondaryButtonText} pointerEvents="none">
-            Not Now
+            {t('ui.notNow')}
           </Text>
         </Pressable>
       </View>

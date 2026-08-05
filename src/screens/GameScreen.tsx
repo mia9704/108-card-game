@@ -44,8 +44,11 @@ import {
   startNextRound,
 } from '../game/gameEngine';
 import { Card, GameState, PLAYER_SEATS, SeatPosition, Suit } from '../game/types';
+import { useTranslation } from '../i18n/LanguageContext';
+import { Locale } from '../i18n/translations';
 
 export function GameScreen() {
+  const { t, formatMessage, locale, setLocale } = useTranslation();
   const [game, setGame] = useState<GameState>(() => startGame());
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [animatingPlay, setAnimatingPlay] = useState(false);
@@ -305,13 +308,29 @@ export function GameScreen() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View style={styles.headerText}>
-            <Text style={styles.title}>108 Mongolian Game</Text>
-            <Text style={styles.subtitle}>Round {game.roundNumber} </Text>
+            <Text style={styles.title}>{t('ui.appTitle')}</Text>
+            <Text style={styles.subtitle}>{t('ui.round', { round: game.roundNumber })}</Text>
           </View>
           <View style={styles.headerActions}>
+            <View style={styles.langToggle}>
+              {(['en', 'mn'] as Locale[]).map((code) => (
+                <Pressable
+                  key={code}
+                  style={[styles.langButton, locale === code && styles.langButtonActive]}
+                  onPress={() => setLocale(code)}
+                >
+                  <Text
+                    style={[styles.langButtonText, locale === code && styles.langButtonTextActive]}
+                    pointerEvents="none"
+                  >
+                    {code === 'en' ? t('ui.langEn') : t('ui.langMn')}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
             <Pressable style={styles.newGameButton} onPress={handleNewGamePress}>
               <Text style={styles.newGameButtonText} pointerEvents="none">
-                New Game
+                {t('ui.newGame')}
               </Text>
             </Pressable>
             <Pressable style={styles.helpButton} onPress={() => setShowHelp(true)}>
@@ -361,17 +380,22 @@ export function GameScreen() {
 
             {game.sevenChainTotal > 0 ? (
               <Text style={styles.chainText}>
-                7-chain: {game.sevenChainTotal} · penalty{' '}
-                {sevenChainPenaltyDrawCount(game.sevenChainTotal)}
+                {t('ui.sevenChain', {
+                  total: game.sevenChainTotal,
+                  count: sevenChainPenaltyDrawCount(game.sevenChainTotal),
+                })}
               </Text>
             ) : null}
             {game.aceSkipsRemaining > 0 ? (
               <Text style={styles.chainText}>
-                Ace skip: {game.aceSkipsRemaining} player{game.aceSkipsRemaining === 1 ? '' : 's'} left
+                {t(
+                  game.aceSkipsRemaining === 1 ? 'ui.aceSkipOneLeft' : 'ui.aceSkipManyLeft',
+                  { count: game.aceSkipsRemaining },
+                )}
               </Text>
             ) : null}
 
-            <Text style={styles.message}>{game.message}</Text>
+            <Text style={styles.message}>{formatMessage(game.message)}</Text>
           </View>
 
           <View style={[styles.sideSeat, { width: tableLayout.sideSeatWidth }]}>
@@ -408,27 +432,31 @@ export function GameScreen() {
                 disabled={selectedIds.length === 0}
               >
                 <Text style={styles.secondaryButtonText}>
-                  Play{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
+                  {selectedIds.length > 0
+                    ? t('ui.playCount', { count: selectedIds.length })
+                    : t('ui.play')}
                 </Text>
               </Pressable>
             ) : null}
             {inAceSkipChallenge ? (
               <Pressable style={styles.secondaryButton} onPress={handleAcceptSkip}>
-                <Text style={styles.secondaryButtonText}>Accept Skip</Text>
+                <Text style={styles.secondaryButtonText}>{t('ui.acceptSkip')}</Text>
               </Pressable>
             ) : null}
             {canDraw ? (
               <Pressable style={styles.secondaryButton} onPress={handleDraw}>
                 <Text style={styles.secondaryButtonText}>
                   {game.sevenChainTotal > 0
-                    ? `Take ${sevenChainPenaltyDrawCount(game.sevenChainTotal)}`
-                    : 'Draw'}
+                    ? t('ui.takePenalty', {
+                        count: sevenChainPenaltyDrawCount(game.sevenChainTotal),
+                      })
+                    : t('ui.draw')}
                 </Text>
               </Pressable>
             ) : null}
             {canPassAfterDraw ? (
               <Pressable style={styles.secondaryButton} onPress={handlePass}>
-                <Text style={styles.secondaryButtonText}>Pass</Text>
+                <Text style={styles.secondaryButtonText}>{t('ui.pass')}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -441,7 +469,7 @@ export function GameScreen() {
               onPress={handleDeclare}
               disabled={!canDeclare}
             >
-              <Text style={styles.declareButtonText}>Declare One Left</Text>
+              <Text style={styles.declareButtonText}>{t('ui.declareOneLeft')}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -467,7 +495,7 @@ export function GameScreen() {
 
       {suitPrompt ? (
         <SuitPicker
-          title="Choose a suit for Queen"
+          title={t('ui.chooseSuitQueen')}
           onSelect={handleSuitSelect}
           onCancel={() => setGame((current) => ({ ...current, pendingPrompt: null }))}
         />
@@ -477,7 +505,7 @@ export function GameScreen() {
         <RoundScoresOverlay
           game={game}
           onContinue={handleRoundScoresContinue}
-          continueLabel={game.phase === 'matchOver' ? 'Continue' : 'Next Round'}
+          continueLabel={game.phase === 'matchOver' ? t('ui.continue') : t('ui.nextRound')}
         />
       ) : null}
 
@@ -491,9 +519,10 @@ export function GameScreen() {
 
       {showNewGameConfirm ? (
         <ConfirmOverlay
-          title="New Game"
-          message="Start a new game? Current progress will be lost."
-          confirmLabel="New Game"
+          title={t('ui.confirmNewGameTitle')}
+          message={t('ui.confirmNewGameMessage')}
+          confirmLabel={t('ui.newGame')}
+          cancelLabel={t('ui.cancel')}
           onConfirm={handleNewMatch}
           onCancel={() => setShowNewGameConfirm(false)}
         />
@@ -527,6 +556,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginLeft: 12,
+  },
+  langToggle: {
+    flexDirection: 'row',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(247, 243, 232, 0.35)',
+    overflow: 'hidden',
+  },
+  langButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(247, 243, 232, 0.1)',
+  },
+  langButtonActive: {
+    backgroundColor: '#f5c542',
+  },
+  langButtonText: {
+    color: '#f7f3e8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  langButtonTextActive: {
+    color: '#1c2833',
   },
   newGameButton: {
     paddingHorizontal: 12,

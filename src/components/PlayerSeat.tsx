@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { PlayingCard } from './PlayingCard';
 import { Card, Player, SeatPosition } from '../game/types';
+import { useTranslation } from '../i18n/LanguageContext';
 
 const HAND_OVERLAP = -24;
 const HAND_CARD_STEP = 72 + HAND_OVERLAP;
@@ -51,6 +52,7 @@ function HumanHand({
   isActive: boolean;
   onCardPress?: (card: Card) => void;
 }) {
+  const { t } = useTranslation();
   const scrollRef = useRef<ScrollView>(null);
   const [scrollState, setScrollState] = useState<ScrollHintState>({
     viewportWidth: 0,
@@ -132,7 +134,7 @@ function HumanHand({
             pressed && styles.scrollHintPressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Scroll hand left"
+          accessibilityLabel={t('ui.scrollLeft')}
           onPress={() => scrollHand('left')}
         >
           <Text style={styles.scrollHintIcon}>‹</Text>
@@ -146,7 +148,7 @@ function HumanHand({
             pressed && styles.scrollHintPressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Scroll hand right"
+          accessibilityLabel={t('ui.scrollRight')}
           onPress={() => scrollHand('right')}
         >
           <Text style={styles.scrollHintIcon}>›</Text>
@@ -220,6 +222,7 @@ export function PlayerSeat({
   sideWidth,
   onCardPress,
 }: PlayerSeatProps) {
+  const { t, playerName } = useTranslation();
   const isHuman = seat === 'bottom';
   const isSideSeat = seat === 'left' || seat === 'right';
 
@@ -234,11 +237,13 @@ export function PlayerSeat({
       ]}
     >
       <View style={[styles.labelRow, seat === 'top' && styles.labelRowTop, compact && styles.labelRowCompact]}>
-        <Text style={[styles.name, compact && styles.nameCompact]}>{player.name}</Text>
+        <Text style={[styles.name, compact && styles.nameCompact]}>{playerName(player.name)}</Text>
         <Text style={[styles.meta, compact && styles.metaCompact]}>
-          {player.hand.length} cards{score !== undefined ? ` · ${score} pts` : ''}
+          {score !== undefined
+            ? t('ui.cardsWithScore', { count: player.hand.length, score })
+            : t('ui.cards', { count: player.hand.length })}
         </Text>
-        {player.declared ? <Text style={styles.declared}>1 left!</Text> : null}
+        {player.declared ? <Text style={styles.declared}>{t('ui.oneLeft')}</Text> : null}
       </View>
 
       {isHuman ? (

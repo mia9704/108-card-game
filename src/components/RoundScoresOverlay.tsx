@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PlayingCard } from './PlayingCard';
 import { cardPoints } from '../game/scoring';
 import { GameState } from '../game/types';
+import { useTranslation } from '../i18n/LanguageContext';
 
 type RoundScoresOverlayProps = {
   game: GameState;
@@ -10,6 +11,7 @@ type RoundScoresOverlayProps = {
 };
 
 export function RoundScoresOverlay({ game, onContinue, continueLabel }: RoundScoresOverlayProps) {
+  const { t, playerName, formatMessage } = useTranslation();
   const roundScores = game.lastRoundScores;
   if (!roundScores) {
     return null;
@@ -21,20 +23,24 @@ export function RoundScoresOverlay({ game, onContinue, continueLabel }: RoundSco
     <View style={styles.overlay}>
       <View style={styles.panel}>
         <Text style={styles.title}>
-          {game.phase === 'matchOver' ? 'Match Over' : `Round ${game.roundNumber} Complete`}
+          {game.phase === 'matchOver'
+            ? t('ui.matchOver')
+            : t('ui.roundComplete', { round: game.roundNumber })}
         </Text>
         {winner ? (
           <Text style={styles.winner}>
-            {winner.name} {winner.name === 'You' ? 'win' : 'wins'} the round!
+            {winner.name === 'You'
+              ? t('ui.winRound')
+              : t('ui.winsRound', { name: playerName(winner.name) })}
           </Text>
         ) : null}
 
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
           <View style={styles.table}>
             <View style={styles.headerRow}>
-              <Text style={[styles.cell, styles.headerCell, styles.nameCol]}>Player</Text>
-              <Text style={[styles.cell, styles.headerCell, styles.roundCol]}>Round</Text>
-              <Text style={[styles.cell, styles.headerCell, styles.totalCol]}>Total</Text>
+              <Text style={[styles.cell, styles.headerCell, styles.nameCol]}>{t('ui.player')}</Text>
+              <Text style={[styles.cell, styles.headerCell, styles.roundCol]}>{t('ui.roundCol')}</Text>
+              <Text style={[styles.cell, styles.headerCell, styles.totalCol]}>{t('ui.total')}</Text>
             </View>
 
             {game.players.map((player) => {
@@ -45,7 +51,7 @@ export function RoundScoresOverlay({ game, onContinue, continueLabel }: RoundSco
               return (
                 <View key={player.id} style={[styles.dataRow, isWinner && styles.winnerRow]}>
                   <Text style={[styles.cell, styles.nameCol, styles.nameText]}>
-                    {player.name}
+                    {playerName(player.name)}
                     {isWinner ? ' ★' : ''}
                   </Text>
                   <Text style={[styles.cell, styles.roundCol, round > 0 && styles.positiveScore]}>
@@ -57,18 +63,18 @@ export function RoundScoresOverlay({ game, onContinue, continueLabel }: RoundSco
             })}
           </View>
 
-          <Text style={styles.handsTitle}>Hands</Text>
+          <Text style={styles.handsTitle}>{t('ui.hands')}</Text>
           {game.players.map((player) => {
             const isWinner = player.id === game.roundWinnerId;
 
             return (
               <View key={`${player.id}-hand`} style={[styles.handBlock, isWinner && styles.winnerHandBlock]}>
                 <Text style={styles.handPlayerName}>
-                  {player.name}
+                  {playerName(player.name)}
                   {isWinner ? ' ★' : ''}
                 </Text>
                 {player.hand.length === 0 ? (
-                  <Text style={styles.outText}>Out — no cards left</Text>
+                  <Text style={styles.outText}>{t('ui.outNoCards')}</Text>
                 ) : (
                   <View style={styles.handCards}>
                     {player.hand.map((card) => (
@@ -89,16 +95,24 @@ export function RoundScoresOverlay({ game, onContinue, continueLabel }: RoundSco
 
           {game.phase === 'matchOver' && game.matchWinnerId ? (
             <Text style={styles.matchWinner}>
-              Match winner: {game.players.find((p) => p.id === game.matchWinnerId)?.name} (lowest
-              score)
+              {t('ui.matchWinnerLowest', {
+                name: playerName(
+                  game.players.find((p) => p.id === game.matchWinnerId)?.name ?? '',
+                ),
+              })}
             </Text>
           ) : null}
 
-          <Text style={styles.note}>Score exactly 108 resets to 54</Text>
+          <Text style={styles.note}>{t('ui.score108Reset')}</Text>
+          {game.message ? (
+            <Text style={styles.roundMessage}>{formatMessage(game.message)}</Text>
+          ) : null}
         </ScrollView>
 
         <Pressable style={styles.button} onPress={onContinue}>
-          <Text style={styles.buttonText}>{continueLabel}</Text>
+          <Text style={styles.buttonText} pointerEvents="none">
+            {continueLabel}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -237,6 +251,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 4,
+    marginBottom: 4,
+  },
+  roundMessage: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#444',
     marginBottom: 4,
   },
   button: {

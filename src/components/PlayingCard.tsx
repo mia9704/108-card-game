@@ -1,8 +1,16 @@
 import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { isRedSuit, rankHint, rankLabel, suitSymbol } from '../game/cards';
 import { Card, Suit } from '../game/types';
+import { useTranslation } from '../i18n/LanguageContext';
+import { TranslationKey } from '../i18n/translations';
 import { cardShadow } from '../utils/shadows';
 import { TableCardMetrics } from '../utils/tableCardSize';
+
+const HINT_KEYS: Record<string, TranslationKey> = {
+  '7-chain': 'hints.sevenChain',
+  Wild: 'hints.wild',
+  Skip: 'hints.skip',
+};
 
 type PlayingCardProps = {
   card: Card;
@@ -29,8 +37,10 @@ export function PlayingCard({
   points,
   onPress,
 }: PlayingCardProps) {
+  const { t } = useTranslation();
   const red = isRedSuit(card.suit);
   const hint = rankHint(card.rank);
+  const hintText = hint ? t(HINT_KEYS[hint]) : null;
   const calledRed = card.calledSuit ? isRedSuit(card.calledSuit) : false;
   const metrics = tableMetrics;
   const metricCardStyle = metrics ? getMetricCardStyle(metrics) : null;
@@ -67,7 +77,7 @@ export function PlayingCard({
       <Text style={[styles.suit, metricTextStyles?.suit, red ? styles.red : styles.black]}>
         {suitSymbol(card.suit)}
       </Text>
-      {hint && !hideHint ? <Text style={[styles.hint, metricTextStyles?.hint]}>{hint}</Text> : null}
+      {hintText && !hideHint ? <Text style={[styles.hint, metricTextStyles?.hint]}>{hintText}</Text> : null}
     </View>
   );
 
@@ -82,7 +92,7 @@ export function PlayingCard({
             calledRed ? styles.red : styles.black,
           ]}
         >
-          Calls {suitSymbol(card.calledSuit)}
+          {t('ui.callsSuit', { suit: suitSymbol(card.calledSuit) })}
         </Text>
       ) : null}
       {points !== undefined ? (
@@ -133,12 +143,13 @@ export function SuitPicker({
   onSelect: (suit: Suit) => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const suits: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
 
   return (
     <View style={styles.suitPickerOverlay}>
       <View style={styles.suitPicker}>
-        <Text style={styles.suitPickerTitle}>{title ?? 'Choose a suit'}</Text>
+        <Text style={styles.suitPickerTitle}>{title ?? t('ui.chooseSuit')}</Text>
         <View style={styles.suitRow}>
           {suits.map((suit) => (
             <Pressable key={suit} style={styles.suitButton} onPress={() => onSelect(suit)}>
@@ -154,7 +165,7 @@ export function SuitPicker({
           ))}
         </View>
         <Pressable onPress={onCancel}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('ui.cancel')}</Text>
         </Pressable>
       </View>
     </View>

@@ -33,12 +33,17 @@ export type LastDraw = {
   playerIndex: number;
   cards: Card[];
   postDrawPlay?: boolean;
-  message?: string;
+  message?: GameMessage;
 };
 
 export type PendingRoundFinish = {
   winnerId: string;
   winningCards: Card[];
+};
+
+export type GameMessage = {
+  key: string;
+  params?: Record<string, string | number | boolean>;
 };
 
 export type GameState = {
@@ -60,7 +65,7 @@ export type GameState = {
   lastPlay: LastPlay | null;
   lastDraw: LastDraw | null;
   pendingRoundFinish: PendingRoundFinish | null;
-  message: string;
+  message: GameMessage;
 };
 
 export type SeatPosition = 'bottom' | 'top' | 'left' | 'right';
