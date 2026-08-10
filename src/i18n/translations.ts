@@ -121,7 +121,10 @@ export const translations = {
     'msg.playerSkipped': '{{name}} was skipped.',
     'msg.mustChooseSuitForQueen': '{{name}} must choose a suit for Queen.',
     'msg.playedCards': '{{name}} played {{count}} {{rank}}(s).',
-    'msg.wentOutOnSevens': '{{name}} went out on 7(s)! {{penalizedName}} draws {{drawCount}}.',
+    'msg.wentOutOnSevens':
+      '{{name}} went out on 7(s)! {{penalizedName}} can play 7(s) or draws {{drawCount}}.',
+    'msg.defendedSevenChain': '{{name}} played {{count}} seven(s) to defend.',
+    'msg.defendSevenChainOrDraw': 'Play 7(s) to defend or draw {{drawCount}}.',
     'msg.declaresOneLeft': '{{name}} declares one card left.',
     'msg.playedSevens': '{{name}} played {{count}} seven(s). Chain total: {{chainTotal}}.',
     'msg.playedAces': '{{name}} played {{count}} ace(s). Skip next {{count}} player(s).',
@@ -150,7 +153,7 @@ export const translations = {
     'rules.declare.l4': 'You cannot go out without declaring first.',
     'rules.special.title': 'Special cards',
     'rules.special.l1':
-      '7 — Start a 7-chain. Each seven played adds to the chain. The next player must play 7s or draw 3 cards from the pile for each seven in the chain (e.g. two 7s → draw 6). After a penalty draw, they may still play or pass.',
+      '7 — Start a 7-chain. Each seven played adds to the chain. The next player must play 7s or draw 3 cards from the pile for each seven in the chain (e.g. two 7s → draw 6). After a penalty draw, they may still play or pass. If someone goes out on 7(s), the next player can still defend with 7(s) or must draw the penalty.',
     'rules.special.l2':
       'Ace — Playing N aces skips the next N players. Each skipped player may play aces (resetting the skip count to however many they played) or accept the skip.',
     'rules.special.l3':
@@ -245,7 +248,10 @@ export const translations = {
     'msg.playerSkipped': '{{name}} алгасагдав.',
     'msg.mustChooseSuitForQueen': '{{name}} боломжит зориулалт сонгох ёстой.',
     'msg.playedCards': '{{name}} {{count}}-ш {{rank}} газар тавилаа.',
-    'msg.wentOutOnSevens': '{{name}} 7-р гарлаа! {{penalizedName}} {{drawCount}} татна.',
+    'msg.wentOutOnSevens':
+      '{{name}} 7-р гарлаа! {{penalizedName}} 7 тоглох эсвэл {{drawCount}} татна.',
+    'msg.defendedSevenChain': '{{name}} {{count}} долоогоор хамгааллаа.',
+    'msg.defendSevenChainOrDraw': '7 тоглох эсвэл {{drawCount}} татах.',
     'msg.declaresOneLeft': '{{name}} ганцтай гэдгээ зарлалаа.',
     'msg.playedSevens': '{{name}} {{count}}ш долоо хөзөр газар тавилаа. Нийт: {{chainTotal}}.',
     'msg.playedAces': '{{name}} {{count}} тамга газар тавилаа. Дараагийн {{count}} хүнийг алгасна.',

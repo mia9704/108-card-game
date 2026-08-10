@@ -37,7 +37,7 @@ import {
   passHumanTurn,
   playHumanCards,
   resetMatch,
-  resolveRoundEndSevenPenalty,
+  resolveAfterPlayAnimation,
   runSingleAutomatedTurn,
   shouldContinueAutomation,
   startGame,
@@ -130,7 +130,7 @@ export function GameScreen() {
         setTablePlay(current.lastPlay.cards);
       }
       const afterPlay = clearLastPlay(current);
-      return resolveRoundEndSevenPenalty(afterPlay);
+      return resolveAfterPlayAnimation(afterPlay);
     });
   }, [pulseDiscard]);
 

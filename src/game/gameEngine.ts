@@ -269,6 +269,19 @@ function prepareHumanTurn(state: GameState): GameState {
     return { ...state, message: m('msg.playAcesOrAcceptSkipExclaim') };
   }
 
+  if (state.pendingRoundFinish && state.sevenChainTotal > 0) {
+    return {
+      ...state,
+      message: m('msg.defendSevenChainOrDraw', {
+        drawCount: sevenChainPenaltyDrawCount(state.sevenChainTotal),
+      }),
+    };
+  }
+
+  if (state.sevenChainTotal > 0) {
+    return { ...state, message: m('msg.mustPlaySevensOrDraw') };
+  }
+
   return { ...state, message: m('msg.yourTurn') };
 }
 
@@ -353,6 +366,14 @@ function finalizePlay(
     const count = playedCards.length;
 
     if (rank === '7') {
+      if (state.pendingRoundFinish) {
+        return {
+          ...next,
+          sevenChainTotal: 0,
+          message: m('msg.defendedSevenChain', { name: player.name, count }),
+        };
+      }
+
       const sevenChainTotal = next.sevenChainTotal + count;
       const nextIndex = nextPlayerIndex(next, 1);
       const penalizedPlayer = next.players[nextIndex];
@@ -381,6 +402,14 @@ function finalizePlay(
 
   const rank = playedCards[0].rank;
   const count = playedCards.length;
+
+  if (state.pendingRoundFinish && rank === '7') {
+    return {
+      ...next,
+      sevenChainTotal: 0,
+      message: m('msg.defendedSevenChain', { name: player.name, count }),
+    };
+  }
 
   if (rank === '7') {
     const sevenChainTotal = next.sevenChainTotal + count;
@@ -511,11 +540,12 @@ function drawSevenPenalty(state: GameState, playerIndex: number): GameState {
   return withCurrentPlayer(next, playerIndex);
 }
 
-export function resolveRoundEndSevenPenalty(state: GameState): GameState {
-  if (!state.pendingRoundFinish || state.sevenChainTotal <= 0 || state.phase !== 'playing') {
-    return state;
+export function resolveAfterPlayAnimation(state: GameState): GameState {
+  if (state.pendingRoundFinish && state.sevenChainTotal === 0 && state.phase === 'playing') {
+    const { winnerId, winningCards } = state.pendingRoundFinish;
+    return finishRound({ ...state, pendingRoundFinish: null }, winnerId, winningCards);
   }
-  return drawSevenPenalty(state, state.currentPlayerIndex);
+  return state;
 }
 
 function mustDraw(state: GameState, playerIndex: number, voluntary = false): GameState {
